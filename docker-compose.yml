@@ -1,0 +1,55 @@
+# https://docs.docker.com/compose/compose-file/
+
+services:
+
+  wiki-web:
+    container_name: wiki-web
+    depends_on:
+      - wiki-db
+    build:
+      args:
+        MW_VERSION: ${MW_VERSION}
+      context: .
+    networks:
+      - wiki-backend
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      PMA_HOST: wiki-db
+      PMA_PORT: 3306
+      WIKI_DB_HOST: wiki-db:3306
+      WIKI_DB_PASSWORD: root
+      WIKI_DB_USER: root
+      WIKI_DB_NAME: mediawiki
+      WIKI_USER: root
+    init: true
+    ports:
+      - '8080:80'
+    restart: on-failure
+    volumes:
+      # Apache2 web server configuration
+      - ./config/web-sites-available:/etc/apache2/sites-available:ro
+  
+
+  wiki-db:
+    container_name: wiki-db
+    environment:
+      MYSQL_DATABASE: mediawiki
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: root
+    # https://hub.docker.com/_/mariadb
+    image: mariadb
+    networks:
+      - wiki-backend
+    restart: on-failure
+    volumes:
+      - wiki-db-data:/var/lib/mysql
+
+volumes:
+  wiki-db-data:
+    name: wiki-db-data
+  wiki-wp-data:
+    name: wiki-wp-data
+
+networks:
+  wiki-backend:
+    name: wiki-backend
