@@ -16,11 +16,11 @@ services:
       MYSQL_ROOT_PASSWORD: root
       PMA_HOST: wiki-db
       PMA_PORT: 3306
-      WIKI_DB_HOST: wiki-db:3306
-      WIKI_DB_PASSWORD: root
-      WIKI_DB_USER: root
-      WIKI_DB_NAME: mediawiki
-      WIKI_USER: root
+      MW_DB_HOST: wiki-db:3306
+      MW_DB_PASSWORD: root
+      MW_DB_USER: root
+      MW_DB_NAME: mediawiki
+      MW_USER: root
     init: true
     ports:
       - '8080:80'
@@ -28,7 +28,24 @@ services:
     volumes:
       # Apache2 web server configuration
       - ./config/web-sites-available:/etc/apache2/sites-available:ro
-  
+      # media wiki images volumes
+      - wiki-images-data:/var/www/wiki/images
+
+  wiki-phpmyadmin:
+    # https://hub.docker.com/_/phpmyadmin
+    image: phpmyadmin
+    container_name: wiki-phpmyadmin
+    depends_on:
+      - wiki-db
+    environment:
+      PMA_HOST: wiki-db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - wiki-backend
+    ports:
+      - "8003:80"
+    restart: on-failure  
 
   wiki-db:
     container_name: wiki-db
@@ -47,8 +64,8 @@ services:
 volumes:
   wiki-db-data:
     name: wiki-db-data
-  wiki-wp-data:
-    name: wiki-wp-data
+  wiki-images-data:
+    name: wiki-images-data
 
 networks:
   wiki-backend:
