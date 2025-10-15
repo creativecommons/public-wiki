@@ -1,18 +1,22 @@
 # https://docs.docker.com/engine/reference/builder/
+
 # https://hub.docker.com/_/debian
 FROM debian:bookworm-slim
 
-# Prevent interactive apt prompts
+# Configure apt not to prompt during docker build
 ARG DEBIAN_FRONTEND=noninteractive
 
-# Configure apt to skip recommended/suggested packages
+# Configure apt to avoid installing recommended and suggested packages
 RUN apt-config dump \
   | grep -E '^APT::Install-(Recommends|Suggests)' \
   | sed -e 's/1/0/' \
   | tee /etc/apt/apt.conf.d/99no-recommends-no-suggests
 
-# Update and install dependencies
-RUN apt-get update && apt-get install -y \
+# Resynchronize the package index files from their sources
+RUN apt-get update 
+
+# Install packages
+RUN apt-get install -y \
     apache2 \
     apache2-utils \
     ca-certificates \
@@ -20,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     git \
     less \
     mariadb-client \
+    sudo \
     unzip \
     vim \
     wget \
@@ -39,40 +44,52 @@ RUN apt-get update && apt-get install -y \
     imagemagick \
     php-imagick \
     && update-ca-certificates \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache modules for MediaWiki
-RUN a2enmod headers rewrite php8.2
+# Clean up packages: Saves space by removing unnecessary package files
+# and lists
+RUN apt-get clean 
 
-# Configure Apache to serve from /var/www/wiki
-RUN sed -ri 's#DocumentRoot /var/www/html#DocumentRoot /var/www/wiki#' /etc/apache2/sites-available/000-default.conf \
-    && sed -ri 's#<Directory /var/www/>#<Directory /var/www/wiki/>#' /etc/apache2/apache2.conf \
-    && sed -ri 's#Options Indexes FollowSymLinks#Options FollowSymLinks#' /etc/apache2/apache2.conf
+RUN rm -rf /var/lib/apt/lists/*
 
-# Optional: PHP overrides (upload size, memory, etc.)
-COPY config/90-local.ini /etc/php/8.2/apache2/conf.d/90-local.ini
+# Add Apache2's www-data user to sudo group and enable passwordless startup
+RUN adduser www-data sudo
+COPY config/www-data_startupservice /etc/sudoers.d/www-data_startupservice
 
-# Install Composer (for extensions/skins that require it)
-RUN curl -sS https://getcomposer.org/installer \
-    | php -- --install-dir=/usr/local/bin --filename=composer
-
-# Startup script (keeps container running & starts Apache)
+# Add Apache2 service startup script
 COPY config/startupservice.sh /startupservice.sh
 RUN chmod +x /startupservice.sh
 CMD ["sudo", "--preserve-env", "/startupservice.sh"]
 
-# Expose Apache HTTP port
+
+# Expose ports for Apache
 EXPOSE 80
 
-# Prepare MediaWiki directory
-RUN mkdir -p /var/www/wiki/images && chown -R www-data:www-data /var/www/wiki
 
-# Switch to www-data for MediaWiki installation
+# Enable Apache modules
+RUN a2enmod headers
+RUN a2enmod php8.2
+RUN a2enmod rewrite
+
+
+# configure PHP 
+COPY config/90-local.ini /etc/php/8.2/apache2/conf.d/
+
+# Install Composer 
+# https://getcomposer.org/doc/00-intro.md#installation-linux-unix-macos
+RUN curl -sS https://getcomposer.org/installer \
+    | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Create compose directory for www-data
+RUN mkdir /var/www/.composer
+RUN chown -R www-data:www-data /var/www/.composer
+
+# Prepare MediaWiki directory
+RUN mkdir -p /var/www/wiki/images 
+RUN chown -R www-data:www-data /var/www/wiki
+
+# MediaWiki installation
 USER www-data
 WORKDIR /var/www/wiki
-
-# MediaWiki version argument
 ARG MW_VERSION
 ENV MW_VERSION=${MW_VERSION:-1.41.2}
 
