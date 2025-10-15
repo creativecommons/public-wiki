@@ -60,7 +60,7 @@ RUN curl -sS https://getcomposer.org/installer \
 # Startup script (keeps container running & starts Apache)
 COPY config/startupservice.sh /startupservice.sh
 RUN chmod +x /startupservice.sh
-CMD ["/startupservice.sh"]
+CMD ["sudo", "--preserve-env", "/startupservice.sh"]
 
 # Expose Apache HTTP port
 EXPOSE 80
