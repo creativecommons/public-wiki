@@ -31,21 +31,6 @@ services:
       # media wiki images volumes
       - wiki-images-data:/var/www/wiki/images
 
-  wiki-phpmyadmin:
-    # https://hub.docker.com/_/phpmyadmin
-    image: phpmyadmin
-    container_name: wiki-phpmyadmin
-    depends_on:
-      - wiki-db
-    environment:
-      PMA_HOST: wiki-db
-      PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: root
-    networks:
-      - wiki-backend
-    ports:
-      - "8003:80"
-    restart: on-failure  
 
   wiki-db:
     container_name: wiki-db
