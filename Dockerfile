@@ -28,7 +28,6 @@ RUN apt-get install -y \
     unzip \
     vim \
     wget \
-    # PHP 8.2 + common MediaWiki extensions
     libapache2-mod-php \
     php8.2 \
     php8.2-cli \
@@ -40,7 +39,6 @@ RUN apt-get install -y \
     php8.2-mysql \
     php8.2-xml \
     php8.2-zip \
-    # Thumbnails / media processing
     imagemagick \
     php-imagick \
     && update-ca-certificates \
@@ -60,23 +58,20 @@ COPY config/startupservice.sh /startupservice.sh
 RUN chmod +x /startupservice.sh
 CMD ["sudo", "--preserve-env", "/startupservice.sh"]
 
-
 # Expose ports for Apache
 EXPOSE 80
-
 
 # Enable Apache modules
 RUN a2enmod headers
 RUN a2enmod php8.2
 RUN a2enmod rewrite
 
-
 # configure PHP 
 COPY config/90-local.ini /etc/php/8.2/apache2/conf.d/
 
 # Install Composer 
 # https://getcomposer.org/doc/00-intro.md#installation-linux-unix-macos
-RUN curl -sS https://getcomposer.org/installer \
+RUN curl --silent --show-error https://getcomposer.org/installer \
     | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Create compose directory for www-data
@@ -94,12 +89,10 @@ ARG MW_VERSION
 ENV MW_VERSION=${MW_VERSION:-1.41.2}
 
 # Download & unpack MediaWiki release
-RUN curl -fsSL "https://releases.wikimedia.org/mediawiki/${MW_VERSION%.*}/mediawiki-$MW_VERSION.tar.gz" -o mediawiki.tar.gz \
+RUN curl --fail --silent --show-error --location "https://releases.wikimedia.org/mediawiki/${MW_VERSION%.*}/mediawiki-$MW_VERSION.tar.gz" -o mediawiki.tar.gz \
     && tar -xzf mediawiki.tar.gz --strip-components=1 \
     && rm mediawiki.tar.gz
 
 # Create writable directories
 RUN mkdir -p images && chmod 775 images
-
-
 
