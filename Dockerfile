@@ -41,7 +41,7 @@ RUN apt-get install -y \
     php8.2-zip \
     imagemagick \
     php-imagick \
-    && update-ca-certificates \
+    && update-ca-certificates 
 
 # Clean up packages: Saves space by removing unnecessary package files
 # and lists
