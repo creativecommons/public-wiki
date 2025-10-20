@@ -86,6 +86,10 @@ RUN chown -R www-data:www-data /var/www/wiki
 USER www-data
 WORKDIR /var/www/wiki
 
+# Accept MediaWiki version from docker-compose.yml
+ARG MW_VERSION
+ENV MW_VERSION=${MW_VERSION}
+
 # Download & unpack MediaWiki release
 RUN curl --fail --silent --show-error --location "https://releases.wikimedia.org/mediawiki/${MW_VERSION%.*}/mediawiki-$MW_VERSION.tar.gz" -o mediawiki.tar.gz \
     && tar -xzf mediawiki.tar.gz --strip-components=1 \
