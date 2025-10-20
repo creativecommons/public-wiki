@@ -92,7 +92,7 @@ ENV MW_VERSION=${MW_VERSION}
 
 # Download & unpack MediaWiki release
 RUN curl --fail --silent --show-error --location "https://releases.wikimedia.org/mediawiki/${MW_VERSION%.*}/mediawiki-$MW_VERSION.tar.gz" -o mediawiki.tar.gz \
-    && tar -xzf mediawiki.tar.gz --strip-components=1 \
+    && tar --extract --gzip --file mediawiki.tar.gz --strip-components=1 \
     && rm mediawiki.tar.gz
 
 # Create writable directories
