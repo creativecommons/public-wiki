@@ -85,10 +85,7 @@ RUN chown -R www-data:www-data /var/www/wiki
 # MediaWiki installation
 USER www-data
 WORKDIR /var/www/wiki
-ARG MW_VERSION
-RUN [ -z "${MW_VERSION}" ] \
-    || echo 'Environment variable MW_VERSION must be specified. Exiting.' \
-    && exit 1
+
 # Download & unpack MediaWiki release
 RUN curl --fail --silent --show-error --location "https://releases.wikimedia.org/mediawiki/${MW_VERSION%.*}/mediawiki-$MW_VERSION.tar.gz" -o mediawiki.tar.gz \
     && tar -xzf mediawiki.tar.gz --strip-components=1 \
