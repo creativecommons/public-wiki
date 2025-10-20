@@ -31,7 +31,6 @@ services:
       # media wiki images volumes
       - wiki-images-data:/var/www/wiki/images
 
-
   wiki-db:
     container_name: wiki-db
     environment:
