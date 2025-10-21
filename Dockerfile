@@ -97,4 +97,3 @@ RUN curl --fail --silent --show-error --location "https://releases.wikimedia.org
 
 # Create writable directories
 RUN mkdir -p images && chmod 775 images
-
