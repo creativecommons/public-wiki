@@ -22,13 +22,10 @@ RUN apt-get install -y \
     ca-certificates \
     curl \
     git \
+    imagemagick \
     less \
-    mariadb-client \
-    sudo \
-    unzip \
-    vim \
-    wget \
     libapache2-mod-php \
+    mariadb-client \
     php8.2 \
     php8.2-cli \
     php8.2-common \
@@ -39,8 +36,11 @@ RUN apt-get install -y \
     php8.2-mysql \
     php8.2-xml \
     php8.2-zip \
-    imagemagick \
     php-imagick \
+    sudo \
+    unzip \
+    vim \
+    wget \
     && update-ca-certificates 
 
 # Clean up packages: Saves space by removing unnecessary package files
@@ -88,10 +88,9 @@ WORKDIR /var/www/wiki
 
 # Accept MediaWiki version from docker-compose.yml
 ARG MW_VERSION
-ENV MW_VERSION=${MW_VERSION}
 
 # Download & unpack MediaWiki release
-RUN curl --fail --silent --show-error --location "https://releases.wikimedia.org/mediawiki/${MW_VERSION%.*}/mediawiki-$MW_VERSION.tar.gz" -o mediawiki.tar.gz \
+RUN curl --fail --silent --show-error --location "https://releases.wikimedia.org/mediawiki/${MW_VERSION%.*}/mediawiki-${MW_VERSION}.tar.gz" -o mediawiki.tar.gz \
     && tar --extract --gzip --file mediawiki.tar.gz --strip-components=1 \
     && rm mediawiki.tar.gz
 
