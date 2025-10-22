@@ -11,7 +11,7 @@ E1="$(printf "\e[1m")"        # bold
 DB_HOST=${WIKI_DB_HOST:-wiki-db}
 DB_PORT=${WIKI_DB_PORT:-3306}
 
-echo "$Waiting for database at ${DB_HOST}:${DB_PORT}..."
+echo "Waiting for database at ${DB_HOST}:${DB_PORT}..."
 
 # Note proper syntax for /dev/tcp — no colon between host and port
 while ! (echo > /dev/tcp/${DB_HOST}/${DB_PORT}) >/dev/null 2>&1; do
