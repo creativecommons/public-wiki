@@ -24,7 +24,7 @@ See [`CONTRIBUTING.md`][org-contrib].
 
 ### Goals
 
-The aim of the project is to establish a robust and localized development environment for MediaWiki using Docker.
+The aim of the project is to establish a robust and localized development environment for MediaWiki using Docker. This repository should represent the most advanced and closest implementation of [publicWiki](https://wiki.creativecommons.org)
 
 
 #### Docker containers:
