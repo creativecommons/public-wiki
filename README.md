@@ -29,25 +29,15 @@ The aim of the project is to establish a robust and localized development enviro
 
 #### Docker containers:
 
-The [`docker-compose.yml`](docker-compose.yml) file defines the following containers:
-- **wiki-web** - PublicWiki web server (Apache2/MediaWiki)
-- **wiki-db** - Database server (MariaDB)
+[ WIP..]
 
-### Setup 
-
-- Build and start Docker:
-    ```shell
-    docker-compose up
-    ```
-
-- Wait for the build and initialization to complete
+[this is the initial setup of repository]
 
 ## Related Links
 - [FrontPage - Debian Wiki](https://wiki.debian.org/FrontPage)
 - [Docker Docs](https://docs.docker.com/)
 - [creativecommons/sre-salt-prime](https://github.com/creativecommons/sre-salt-prime): Site Reliability Engineering / DevOps SaltStack configuration files
 - [creativecommons/index-dev-env](https://github.com/creativecommons/index-dev-env): Local development environment for CreativeCommons.org (reference for docker project)
-- [MainPage - Wiki](https://wiki.creativecommons.org/)
 
 ## License
 
