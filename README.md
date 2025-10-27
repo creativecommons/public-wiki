@@ -43,7 +43,7 @@ The [`docker-compose.yml`](docker-compose.yml) file defines the following contai
 ## Related Links
 - [FrontPage - Debian Wiki](https://wiki.debian.org/FrontPage)
 - [Docker Docs](https://docs.docker.com/)
- [MainPage - CreativeCommons |PublicWiki](https://wiki.creativecommons.org/)
+- [MainPage - CreativeCommons | PublicWiki](https://wiki.creativecommons.org/)
 - [creativecommons/CCID-MediaWiki](https://github.com/creativecommons/CCID-MediaWiki): Script to add CCID users to MediaWiki
 - [creativecommons/index-dev-env](https://github.com/creativecommons/index-dev-env): Local development environment for CreativeCommons.org (reference for docker project)
 - [creativecommons/sre-salt-prime](https://github.com/creativecommons/sre-salt-prime): Site Reliability Engineering / DevOps SaltStack configuration files
