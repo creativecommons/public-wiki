@@ -30,6 +30,8 @@ services:
       - ./config/web-sites-available:/etc/apache2/sites-available:ro
       # media wiki images volumes
       - wiki-images-data:/var/www/wiki/images
+      # MediaWiki configuration script
+      - ./config/LocalSettings.php:/var/www/wiki/LocalSettings.php:ro
 
   wiki-db:
     container_name: wiki-db
