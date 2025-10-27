@@ -43,9 +43,9 @@ The [`docker-compose.yml`](docker-compose.yml) file defines the following contai
 ## Related Links
 - [FrontPage - Debian Wiki](https://wiki.debian.org/FrontPage)
 - [Docker Docs](https://docs.docker.com/)
-- [creativecommons/sre-salt-prime](https://github.com/creativecommons/sre-salt-prime): Site Reliability Engineering / DevOps SaltStack configuration files
+- [MainPage - CreativeCommons | PublicWiki](https://wiki.creativecommons.org/)
 - [creativecommons/index-dev-env](https://github.com/creativecommons/index-dev-env): Local development environment for CreativeCommons.org (reference for docker project)
-- [MainPage - Wiki](https://wiki.creativecommons.org/)
+- [creativecommons/sre-salt-prime](https://github.com/creativecommons/sre-salt-prime): Site Reliability Engineering / DevOps SaltStack configuration files
 
 ## License
 
