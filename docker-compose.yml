@@ -14,15 +14,6 @@ services:
       - wiki-backend
     env_file:
       - .env
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      PMA_HOST: wiki-db
-      PMA_PORT: 3306
-      MW_DB_HOST: wiki-db:3306
-      MW_DB_PASSWORD: root
-      MW_DB_USER: root
-      MW_DB_NAME: mediawiki
-      MW_USER: root
     init: true
     ports:
       - '8080:80'
