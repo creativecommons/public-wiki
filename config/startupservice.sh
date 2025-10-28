@@ -45,7 +45,7 @@ echo 'Database is up!'
 cd /var/www/wiki
 
 # Check if LocalSettings already exists
-if [[ ! -f /var/www/wiki/config/LocalSettings.php ]]; then
+if [[ ! -f /var/www/wiki/LocalSettings.php ]]; then
   echo "Running MediaWiki installation..."
 
   php maintenance/install.php \
@@ -58,8 +58,8 @@ if [[ ! -f /var/www/wiki/config/LocalSettings.php ]]; then
     "$MW_SITENAME" "$MW_ADMIN_USER" \
     --pass "$MW_ADMIN_PASS"
 
-  chmod 600 /var/www/wiki/config/LocalSettings.php
-  chown www-data:www-data /var/www/wiki/config/LocalSettings.php || true
+  chmod 600 /var/www/wiki/LocalSettings.php
+  chown www-data:www-data /var/www/wiki/LocalSettings.php || true
   echo "Installation complete, LocalSettings.php is available."
 else
   echo "LocalSettings.php already exists — skipping installation."
