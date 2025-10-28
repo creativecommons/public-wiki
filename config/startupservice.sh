@@ -8,7 +8,7 @@ E1="$(printf "\e[1m")"        # bold
 
 /sbin/apache2ctl -v
 
-# Ensure all critical vars are set — fail fast if any missing
+# Ensure all vars are set
 required_vars=(
   MW_DB_HOST
   MW_DB_PORT
