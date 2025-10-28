@@ -8,10 +8,12 @@ services:
       - wiki-db
     build:
       args:
-        MW_VERSION: "1.44.2"
+        MW_VERSION: ${MW_VERSION}
       context: .
     networks:
       - wiki-backend
+    env_file:
+      - .env
     environment:
       MYSQL_ROOT_PASSWORD: root
       PMA_HOST: wiki-db
