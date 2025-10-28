@@ -42,6 +42,8 @@ done
 
 echo 'Database is up!'
 
+chown -R www-data:www-data /var/www/wiki
+chmod -R 755 /var/www/wiki
 cd /var/www/wiki
 
 # Check if LocalSettings already exists
@@ -55,10 +57,10 @@ if [[ ! -f /var/www/wiki/LocalSettings.php ]]; then
     --dbserver="$MW_DB_HOST:$MW_DB_PORT" \
     --server="$MW_SERVER_URL" \
     --scriptpath="" \
+    --confpath="/var/www/wiki" \
     "$MW_SITENAME" "$MW_ADMIN_USER" \
     --pass "$MW_ADMIN_PASS"
   
-  mv /var/www/wiki/config/LocalSettings.php /var/www/wiki/
   chmod 600 /var/www/wiki/LocalSettings.php
   chown www-data:www-data /var/www/wiki/LocalSettings.php || true
   echo "Installation complete, LocalSettings.php is available."
