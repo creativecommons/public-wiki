@@ -58,8 +58,6 @@ if [[ ! -f /var/www/wiki/config/LocalSettings.php ]]; then
     "$MW_SITENAME" "$MW_ADMIN_USER" \
     --pass "$MW_ADMIN_PASS"
 
-  mkdir -p /var/www/wiki/config
-  mv /var/www/wiki/LocalSettings.php /var/www/wiki/config/LocalSettings.php
   chmod 600 /var/www/wiki/config/LocalSettings.php
   chown www-data:www-data /var/www/wiki/config/LocalSettings.php || true
   echo "Installation complete, LocalSettings.php is available."
