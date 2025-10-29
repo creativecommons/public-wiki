@@ -26,12 +26,10 @@ services:
 
   wiki-db:
     container_name: wiki-db
-    environment:
-      MYSQL_DATABASE: mediawiki
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: root
     # https://hub.docker.com/_/mariadb
     image: mariadb
+    env_file:
+      - .env
     networks:
       - wiki-backend
     restart: on-failure
