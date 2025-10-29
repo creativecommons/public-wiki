@@ -20,13 +20,15 @@ required_vars=(
   MW_ADMIN_USER
   MW_ADMIN_PASS
 )
-for var in "${required_vars[@]}"; do
-  if [[ -z "${!var:-}" ]]; then
-    echo "ERROR: Required environment variable '$var' is not set."
+for var in "${required_vars[@]}"
+do
+  if [[ -z "${var:-}" ]]
+  then
+    echo "ERROR: Required environment variable ${var} is not set."
     exit 1
   fi
 done
-echo "All required environment variables are present."
+echo 'All required environment variables are present.'
 
 
 DB_HOST=${WIKI_DB_HOST:-wiki-db}
@@ -48,24 +50,24 @@ cd /var/www/wiki
 
 # Check if LocalSettings already exists
 if [[ ! -f /var/www/wiki/LocalSettings.php ]]; then
-  echo "Running MediaWiki installation..."
+  echo 'Running MediaWiki installation...'
 
   php maintenance/install.php \
-    --dbname="$MW_DB_NAME" \
-    --dbuser="$MW_DB_USER" \
-    --dbpass="$MW_DB_PASS" \
-    --dbserver="$MW_DB_HOST:$MW_DB_PORT" \
-    --server="$MW_SERVER_URL" \
+    --dbname="${MW_DB_NAME}" \
+    --dbuser="${MW_DB_USER}" \
+    --dbpass="${MW_DB_PASS}" \
+    --dbserver="${MW_DB_HOST}:${MW_DB_PORT}" \
+    --server="${MW_SERVER_URL}" \
     --scriptpath="" \
-    --confpath="/var/www/wiki" \
-    "$MW_SITENAME" "$MW_ADMIN_USER" \
-    --pass "$MW_ADMIN_PASS"
+    --confpath='/var/www/wiki' \
+    "$MW_SITENAME" "${MW_ADMIN_USER}" \
+    --pass "${MW_ADMIN_PASS}"
   
   chmod 600 /var/www/wiki/LocalSettings.php
-  chown www-data:www-data /var/www/wiki/LocalSettings.php || true
-  echo "Installation complete, LocalSettings.php is available."
+  chown www-data:www-data /var/www/wiki/LocalSettings.php
+  echo 'Installation complete, LocalSettings.php is available.'
 else
-  echo "LocalSettings.php already exists — skipping installation."
+  echo 'LocalSettings.php already exists — skipping installation.'
 fi
 
 # Start Apache in the foreground
