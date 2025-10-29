@@ -49,7 +49,8 @@ chmod -R 755 /var/www/wiki
 cd /var/www/wiki
 
 # Check if LocalSettings already exists
-if [[ ! -f /var/www/wiki/LocalSettings.php ]]; then
+if [[ ! -f /var/www/wiki/LocalSettings.php ]]
+then
   echo 'Running MediaWiki installation...'
 
   php maintenance/install.php \
