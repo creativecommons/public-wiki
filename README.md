@@ -32,13 +32,37 @@ The aim of the project is to establish a robust and localized development enviro
 The [`docker-compose.yml`](docker-compose.yml) file defines the following containers:
 - **wiki-web** - PublicWiki web server (Apache2/MediaWiki)
 - **wiki-db** - Database server (MariaDB)
+  - **[localhost:8080](http://localhost:8080/)**
 
 ### Setup
+- Create the `.env` file:
+    ```shell
+    cp .env.example .env
+    ```
+- Update `.env` to set desired values for MW variables (`MW_VERSION`,
+   `MYSQL_ROOT_PASSWORD`, `MW_SERVER_URL`,`MW_ADMIN_PASS`, etc.)
 - Build and start Docker:
     ```shell
     docker-compose up
     ```
 - Wait for the build and initialization to complete
+
+## Dev configuration
+
+
+### Apache2
+
+See [`config/web-sites-available/000-default.conf`][dev-webconfig].
+
+[dev-webconfig]: config/web-sites-available/000-default.conf
+
+### MediaWiki configuration 
+
+| Name      | Version |
+| --------- | ------- |
+| MediaWiki | `1.44.2`   |
+
+Also see [`.env.example`](.env.example).
 
 ## Related Links
 - [FrontPage - Debian Wiki](https://wiki.debian.org/FrontPage)
