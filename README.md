@@ -39,8 +39,7 @@ The [`docker-compose.yml`](docker-compose.yml) file defines the following contai
     ```shell
     cp .env.example .env
     ```
-2. Update `.env` to set desired values for MW variables (`MW_VERSION`,
-   `MYSQL_ROOT_PASSWORD`, `MW_SERVER_URL`,`MW_ADMIN_PASS`, etc.)
+2. Update `.env` to set desired values for MW variables (`MW_VERSION`, `MYSQL_ROOT_PASSWORD`, `MW_SERVER_URL`,`MW_ADMIN_PASS`, etc.)
 3. Build and start Docker:
     ```shell
     docker-compose up
