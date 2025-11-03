@@ -8,19 +8,12 @@ services:
       - wiki-db
     build:
       args:
-        MW_VERSION: "1.44.2"
+        MW_VERSION: ${MW_VERSION}
       context: .
     networks:
       - wiki-backend
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      PMA_HOST: wiki-db
-      PMA_PORT: 3306
-      MW_DB_HOST: wiki-db:3306
-      MW_DB_PASSWORD: root
-      MW_DB_USER: root
-      MW_DB_NAME: mediawiki
-      MW_USER: root
+    env_file:
+      - .env
     init: true
     ports:
       - '8080:80'
@@ -33,12 +26,10 @@ services:
 
   wiki-db:
     container_name: wiki-db
-    environment:
-      MYSQL_DATABASE: mediawiki
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: root
     # https://hub.docker.com/_/mariadb
     image: mariadb
+    env_file:
+      - .env
     networks:
       - wiki-backend
     restart: on-failure
