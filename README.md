@@ -1,6 +1,12 @@
 # public-wiki
 Public Wiki
 
+
+## Overview
+
+The aim of the project is to establish a robust and localized development environment for MediaWiki using Docker. This repository should represent the most advanced and closest implementation of [publicWiki](https://wiki.creativecommons.org)
+
+
 ## Code of Conduct
 
 [`CODE_OF_CONDUCT.md`][org-coc]:
@@ -22,19 +28,16 @@ See [`CONTRIBUTING.md`][org-contrib].
 [org-contrib]: https://github.com/creativecommons/.github/blob/main/CONTRIBUTING.md
 
 
-### Goals
-
-The aim of the project is to establish a robust and localized development environment for MediaWiki using Docker. This repository should represent the most advanced and closest implementation of [publicWiki](https://wiki.creativecommons.org)
-
-
-#### Docker containers:
+## Docker containers:
 
 The [`docker-compose.yml`](docker-compose.yml) file defines the following containers:
 - **wiki-web** - PublicWiki web server (Apache2/MediaWiki)
 - **wiki-db** - Database server (MariaDB)
   - **[localhost:8080](http://localhost:8080/)**
 
-### Setup
+
+## Setup
+
 1. Create the `.env` file:
     ```shell
     cp .env.example .env
@@ -46,14 +49,15 @@ The [`docker-compose.yml`](docker-compose.yml) file defines the following contai
     ```
 4. Wait for the build and initialization to complete
 
-## Dev configuration
 
+## Dev configuration
 
 ### Apache2
 
 See [`config/web-sites-available/000-default.conf`][dev-webconfig].
 
 [dev-webconfig]: config/web-sites-available/000-default.conf
+
 
 ### MediaWiki configuration 
 
@@ -63,12 +67,15 @@ See [`config/web-sites-available/000-default.conf`][dev-webconfig].
 
 Also see [`.env.example`](.env.example).
 
+
 ## Related Links
+
 - [FrontPage - Debian Wiki](https://wiki.debian.org/FrontPage)
 - [Docker Docs](https://docs.docker.com/)
 - [MainPage - CreativeCommons | PublicWiki](https://wiki.creativecommons.org/)
 - [creativecommons/index-dev-env](https://github.com/creativecommons/index-dev-env): Local development environment for CreativeCommons.org (reference for docker project)
 - [creativecommons/sre-salt-prime](https://github.com/creativecommons/sre-salt-prime): Site Reliability Engineering / DevOps SaltStack configuration files
+
 
 ## License
 
