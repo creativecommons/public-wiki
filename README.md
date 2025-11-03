@@ -35,17 +35,17 @@ The [`docker-compose.yml`](docker-compose.yml) file defines the following contai
   - **[localhost:8080](http://localhost:8080/)**
 
 ### Setup
-- Create the `.env` file:
+1. Create the `.env` file:
     ```shell
     cp .env.example .env
     ```
-- Update `.env` to set desired values for MW variables (`MW_VERSION`,
+2. Update `.env` to set desired values for MW variables (`MW_VERSION`,
    `MYSQL_ROOT_PASSWORD`, `MW_SERVER_URL`,`MW_ADMIN_PASS`, etc.)
-- Build and start Docker:
+3. Build and start Docker:
     ```shell
     docker-compose up
     ```
-- Wait for the build and initialization to complete
+4. Wait for the build and initialization to complete
 
 ## Dev configuration
 
