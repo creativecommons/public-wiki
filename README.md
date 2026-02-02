@@ -1,10 +1,14 @@
 # public-wiki
-Public Wiki
+
+_Development_ Creative Commons (CC) Public Wiki
 
 
 ## Overview
 
-The aim of the project is to establish a robust and localized development environment for MediaWiki using Docker. This repository should represent the most advanced and closest implementation of [publicWiki](https://wiki.creativecommons.org)
+The aim of the project is to establish a robust and localized development
+environment for MediaWiki using Docker. This repository should represent the
+most advanced and closest implementation of the
+[CC Public Wiki](https://wiki.creativecommons.org)
 
 
 ## Code of Conduct
@@ -31,7 +35,7 @@ See [`CONTRIBUTING.md`][org-contrib].
 ## Docker containers:
 
 The [`docker-compose.yml`](docker-compose.yml) file defines the following containers:
-- **wiki-web** - PublicWiki web server (Apache2/MediaWiki)
+- **wiki-web** - Public Wiki web server (Apache2/MediaWiki)
 - **wiki-db** - Database server (MariaDB)
   - **[localhost:8080](http://localhost:8080/)**
 
@@ -52,6 +56,7 @@ The [`docker-compose.yml`](docker-compose.yml) file defines the following contai
 
 ## Dev configuration
 
+
 ### Apache2
 
 See [`config/web-sites-available/000-default.conf`][dev-webconfig].
@@ -59,20 +64,20 @@ See [`config/web-sites-available/000-default.conf`][dev-webconfig].
 [dev-webconfig]: config/web-sites-available/000-default.conf
 
 
-### MediaWiki configuration 
+### MediaWiki configuration
 
-| Name      | Version |
-| --------- | ------- |
-| MediaWiki | `1.44.2`   |
+| Name      | Version  |
+| --------- | -------- |
+| MediaWiki | `1.44.2` |
 
 Also see [`.env.example`](.env.example).
 
 
 ## Related Links
 
+- [CC Public Wiki](https://wiki.creativecommons.org/)
 - [FrontPage - Debian Wiki](https://wiki.debian.org/FrontPage)
 - [Docker Docs](https://docs.docker.com/)
-- [MainPage - CreativeCommons | PublicWiki](https://wiki.creativecommons.org/)
 - [creativecommons/index-dev-env](https://github.com/creativecommons/index-dev-env): Local development environment for CreativeCommons.org (reference for docker project)
 - [creativecommons/sre-salt-prime](https://github.com/creativecommons/sre-salt-prime): Site Reliability Engineering / DevOps SaltStack configuration files
 
@@ -81,4 +86,4 @@ Also see [`.env.example`](.env.example).
 
 - [`LICENSE`](LICENSE) (Expat/[MIT][mit] License)
 
-[mit]: http://www.opensource.org/licenses/MIT "The MIT License | Open Source Initiative" 
+[mit]: http://www.opensource.org/licenses/MIT "The MIT License | Open Source Initiative"
