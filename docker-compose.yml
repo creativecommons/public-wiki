@@ -2,16 +2,16 @@
 
 services:
 
-  wiki-web:
-    container_name: wiki-web
+  web:
+    container_name: web
     depends_on:
-      - wiki-db
+      - db
     build:
       args:
         MW_VERSION: ${MW_VERSION}
       context: .
-    networks:
-      - wiki-backend
+    links:
+      - db
     env_file:
       - .env
     init: true
@@ -21,27 +21,21 @@ services:
     volumes:
       # Apache2 web server configuration
       - ./config/web-sites-available:/etc/apache2/sites-available:ro
-      # media wiki images volumes
-      - wiki-images-data:/var/www/wiki/images
+      # media wiki volumes
+      - public-wiki-vol-wiki:/var/www/wiki
+      - public-wiki-vol-wiki-images:/var/www/wiki/images
 
-  wiki-db:
-    container_name: wiki-db
+  db:
+    container_name: db
     # https://hub.docker.com/_/mariadb
     image: mariadb
     env_file:
       - .env
-    networks:
-      - wiki-backend
     restart: on-failure
     volumes:
-      - wiki-db-data:/var/lib/mysql
+      - public-wiki-vol-mysql:/var/lib/mysql
 
 volumes:
-  wiki-db-data:
-    name: wiki-db-data
-  wiki-images-data:
-    name: wiki-images-data
-
-networks:
-  wiki-backend:
-    name: wiki-backend
+  public-wiki-vol-mysql:
+  public-wiki-vol-wiki:
+  public-wiki-vol-wiki-images:
