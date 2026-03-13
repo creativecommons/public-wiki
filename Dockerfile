@@ -1,13 +1,13 @@
 # https://docs.docker.com/engine/reference/builder/
 
 # https://hub.docker.com/_/debian
-FROM debian:bookworm-slim
-# NOTE: There are a few PHP version numbers that are specific to the Debian
-#       version installed. See "NOTE: PHP version"
+FROM debian:trixie-slim
+# NOTE: Occurrences of "NOTE: PHP version", below, where a specific PHP version
+#       is required (based on version supported by installed Debian version)
 
 # Configure apt not to prompt during docker build
 # Accept MediaWiki version from docker-compose.yml
-ARG DEBIAN_FRONTEND=noninteractive MW_VERSION
+ARG DEBIAN_FRONTEND=noninteractive
 
 # Configure apt to avoid installing recommended and suggested packages
 RUN apt-config dump \
@@ -16,13 +16,14 @@ RUN apt-config dump \
   | tee /etc/apt/apt.conf.d/99no-recommends-no-suggests
 
 # https://docs.docker.com/build/building/best-practices/#apt-get
-# - Resynchronize the package index, update packagse, install packages,
+# - Resynchronize the package index, update packages, install packages,
 #   clean-up, and update CA certificates
 # - git is included because MediaWiki says: "Git version control software not
 #   found. [...] Note Special:Version will not display commit hashes."
 RUN apt-get update \
     && apt-get dist-upgrade --yes --no-install-recommends \
     && apt-get install --yes --no-install-recommends \
+        adduser \
         apache2 \
         apache2-utils \
         ca-certificates \
@@ -32,6 +33,7 @@ RUN apt-get update \
         less \
         libapache2-mod-php \
         mariadb-client \
+        mediawiki \
         php-imagick \
         php \
         php-cli \
@@ -59,32 +61,16 @@ COPY config/startupservice.sh /startupservice.sh
 RUN chmod +x /startupservice.sh
 CMD ["sudo", "--preserve-env", "/startupservice.sh"]
 
+# Enable Apache modules - NOTE: PHP version
+RUN a2enmod headers \
+  && a2enmod php8.4 \
+  && a2enmod rewrite
+
+# Configure PHP - NOTE: PHP version
+COPY config/90-local.ini /etc/php/8.4/apache2/conf.d/
+
 # Expose ports for Apache
 EXPOSE 80
 
-# Enable Apache modules - NOTE: PHP version
-RUN a2enmod headers \
-  && a2enmod php8.2 \
-  && a2enmod rewrite
-
-# configure PHP - NOTE: PHP version
-COPY config/90-local.ini /etc/php/8.2/apache2/conf.d/
-
-# Install Composer
-# https://getcomposer.org/doc/00-intro.md#installation-linux-unix-macos
-RUN curl --fail --location --show-error --silent \
-        'https://getcomposer.org/installer' \
-    | php -- --install-dir=/usr/local/bin --filename=composer
-
-# Create directories and assign permissions
-RUN mkdir --parents /var/www/.composer /var/www/wiki/images \
-    && chown --recursive www-data:www-data /var/www/.composer /var/www/wiki
-
-# MediaWiki installation
 USER www-data
-WORKDIR /var/www/wiki
-
-# Download & unpack MediaWiki release
-RUN curl --fail --location --show-error --silent \
-        "https://releases.wikimedia.org/mediawiki/${MW_VERSION%.*}/mediawiki-${MW_VERSION}.tar.gz" \
-    | tar --extract --gzip --strip-components=1
+WORKDIR /var/lib/mediawiki

@@ -7,8 +7,6 @@ services:
     depends_on:
       - db
     build:
-      args:
-        MW_VERSION: ${MW_VERSION}
       context: .
     links:
       - db
@@ -22,8 +20,8 @@ services:
       # Apache2 web server configuration
       - ./config/web-sites-available:/etc/apache2/sites-available:ro
       # media wiki volumes
-      - public-wiki-vol-wiki:/var/www/wiki
-      - public-wiki-vol-wiki-images:/var/www/wiki/images
+      - public-wiki-vol-wiki-etc:/etc/mediawiki
+      - public-wiki-vol-wiki-images:/var/lib/mediawiki/images
 
   db:
     container_name: db
@@ -37,5 +35,5 @@ services:
 
 volumes:
   public-wiki-vol-mysql:
-  public-wiki-vol-wiki:
+  public-wiki-vol-wiki-etc:
   public-wiki-vol-wiki-images:
