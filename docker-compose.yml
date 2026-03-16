@@ -1,4 +1,5 @@
 # https://docs.docker.com/compose/compose-file/
+name: public-wiki
 
 services:
 
@@ -17,11 +18,11 @@ services:
       - '8080:80'
     restart: on-failure
     volumes:
-      # Apache2 web server configuration
+      # Apache2 web server configuration (read-only)
       - ./config/web-sites-available:/etc/apache2/sites-available:ro
-      # media wiki volumes
-      - public-wiki-vol-wiki-etc:/etc/mediawiki
-      - public-wiki-vol-wiki-images:/var/lib/mediawiki/images
+      # MediaWiki volumes
+      - volume-wiki-etc:/etc/mediawiki
+      - volume-wiki-images:/var/lib/mediawiki/images
 
   db:
     container_name: db
@@ -31,9 +32,9 @@ services:
       - .env
     restart: on-failure
     volumes:
-      - public-wiki-vol-mysql:/var/lib/mysql
+      - volume-mysql:/var/lib/mysql
 
 volumes:
-  public-wiki-vol-mysql:
-  public-wiki-vol-wiki-etc:
-  public-wiki-vol-wiki-images:
+  volume-mysql:
+  volume-wiki-etc:
+  volume-wiki-images:

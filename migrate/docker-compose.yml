@@ -1,0 +1,70 @@
+# https://docs.docker.com/compose/compose-file/
+name: public-wiki
+
+services:
+
+  web:
+    container_name: web
+    depends_on:
+      - db
+    build:
+      context: ../
+    links:
+      - db
+    env_file:
+      - ../.env
+    init: true
+    ports:
+      - '8080:80'
+    restart: on-failure
+    volumes:
+      # Apache2 web server configuration (read-only)
+      - ../config/web-sites-available:/etc/apache2/sites-available:ro
+      # MediaWiki volumes
+      - volume-wiki-etc:/etc/mediawiki
+      - volume-wiki-images:/var/lib/mediawiki/images
+
+  web-bullseye:
+    container_name: web-bullseye
+    depends_on:
+      - db
+    build:
+      args:
+        MW_SERVER_URL: 'http://localhost:8081'
+      context: ../
+      dockerfile: migrate/Dockerfile.bullseye
+    environment:
+      MW_SERVER_URL: 'http://localhost:8081'
+    links:
+      - db
+    env_file:
+      - ../.env
+    init: true
+    ports:
+      - '8081:80'
+    restart: on-failure
+    volumes:
+      # Apache2 web server configuration (read-only)
+      - ../config/web-sites-available:/etc/apache2/sites-available:ro
+      # MediaWiki volumes
+      - volume-wiki-etc-bullseye:/etc/mediawiki
+      # MediaWiki volumes (read-only)
+      - volume-wiki-images:/var/lib/mediawiki/images:ro
+      # Migration cache (read-only)
+      - ./cache:/var/migration-cache:ro
+
+  db:
+    container_name: db
+    # https://hub.docker.com/_/mariadb
+    image: mariadb
+    env_file:
+      - ../.env
+    restart: on-failure
+    volumes:
+      - volume-mysql:/var/lib/mysql
+
+volumes:
+  volume-mysql:
+  volume-wiki-etc:
+  volume-wiki-etc-bullseye:
+  volume-wiki-images:
