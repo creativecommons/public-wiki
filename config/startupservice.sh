@@ -60,8 +60,15 @@ then
         --scriptpath="" \
         --server="${MW_SERVER_URL}" \
         "${MW_SITENAME}" "${MW_ADMIN_USER}"
+    # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
+    echo 'Enabling Short URL'
     # shellcheck disable=SC2016
     echo '$wgArticlePath = "/wiki/$1";' >> "${CONF_PATH}/LocalSettings.php"
+    # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
+    echo 'Enabling Uploads'
+    # shellcheck disable=SC2016
+    sed -e's/\$wgEnableUploads = false;/$wgEnableUploads = true;/' -i \
+        "${CONF_PATH}/LocalSettings.php"
     echo 'MediaWiki installation complete'
 else
     echo "${E90}Skipping MediaWiki installation (config present)${E0}"
