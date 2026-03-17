@@ -24,7 +24,6 @@ E30="$(printf "\e[30m")"      # foreground: black
 E31="$(printf "\e[31m")"      # foreground: red
 E33="$(printf "\e[33m")"      # foreground: yellow
 E43="$(printf "\e[43m")"      # foreground: yellow
-E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E92="$(printf "\e[92m")"      # foreground: bright green
 E93="$(printf "\e[93m")"      # foreground: bright yellow
 E97="$(printf "\e[97m")"      # foreground: bright white
@@ -116,8 +115,7 @@ import_database() {
     header 'Import data into container database'
     print_var DOCKER_SQL
     echo 'Importing database dump SQL on web-bullseye'
-    docker compose exec web-bullseye /usr/bin/php \
-        /usr/share/mediawiki/maintenance/sql.php --quiet "${DOCKER_SQL}"
+    mw_run_web_bullseye sql.php --quiet "${DOCKER_SQL}"
     echo
 }
 
@@ -140,62 +138,94 @@ migrate_database() {
     header 'Migrate container database'
     # https://www.mediawiki.org/wiki/Manual:Update.php
     echo 'Migrating MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
-    docker compose exec web-bullseye /usr/bin/php \
-        /usr/share/mediawiki/maintenance/update.php --quiet --quick 2>&1 \
+    mw_run_web_bullseye update.php --quiet --quick 2>&1 \
         | sed \
             -e'/cleanupUsersWithNoId.php to fix this situation./d' \
             -e'/^$/d'
     # https://www.mediawiki.org/wiki/Manual:CleanupUsersWithNoId.php
     echo 'Clean-up MediaWiki users with no ID on web-bullseye'
-    docker compose exec web-bullseye /usr/bin/php \
-        /usr/share/mediawiki/maintenance/cleanupUsersWithNoId.php \
-             --quiet --prefix '*'
+    mw_run_web_bullseye cleanupUsersWithNoId.php --quiet --prefix '*'
     echo 'Stopping web-bullseye container'
     docker compose stop web-bullseye
     # https://www.mediawiki.org/wiki/Manual:Update.php
     echo 'Migrating MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
-    docker compose exec web /usr/bin/php \
-        /usr/share/mediawiki/maintenance/run update --quiet --quick
+    mw_run_web update --quiet --quick
     echo
 }
 
 
-perform_database_maintenance() {
-    header 'Perform container database maintenance'
-    no_op 'TODO'
+mw_run_web() {
+    # https://www.mediawiki.org/wiki/Manual:Maintenance_scripts
+    #     Since MediaWiki 1.40, maintenance scripts should be invoked
+    #     indirectly through php ./maintenance/run.php. Invoking maintenance
+    #     scripts directly will trigger a warning.
+    docker compose exec web /usr/bin/php \
+        /usr/share/mediawiki/maintenance/run "${@}"
+}
+
+
+mw_run_web_bullseye() {
+    # https://www.mediawiki.org/wiki/Manual:Sql.php, for example:
+    #     In MediaWiki version MediaWiki 1.39 and earlier, you must invoke
+    #     maintenance scripts using php maintenance/scriptName.php instead of
+    #     php maintenance/run.php scriptName.
+    # shellcheck disable=SC2145
+    docker compose exec web-bullseye /usr/bin/php \
+        /usr/share/mediawiki/maintenance/"${@}"
+}
+
+
+database_maintenance(){
+    local _note _note_one _note_two
+    header 'Optimize MediaWiki database tables'
+    _note='note     :'
+    # Check
+    _note_one="${_note} The storage engine for the table doesn't support check"
+    echo "${E1}Checking all databases.${E0} Dicarded notes include:"
+    echo "  ${_note_one}"
+    docker compose exec db sh -c 'mariadbcheck \
+        --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
+        --check' 2>&1 | gsed --regexp-extended --null-data \
+            -e"s/[^\n]+\n${_note_one}\n//g"
+    # Optimize
+    _note_one="${_note} Table does not support optimize, doing recreate [+]"
+    _note_one="${_note_one} analyze instead"
+    _note_two="${_note} The storage engine for the table doesn't support"
+    _note_two="${_note_two} optimize"
+    echo "${E1}Optimizing all databases.${E0} Dicarded notes include:"
+    echo "  ${_note_one}"
+    echo "  ${_note_two}"
+    docker compose exec db sh -c 'mariadbcheck \
+        --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
+        --optimize' 2>&1 | gsed --regexp-extended --null-data \
+            -e"s/[^\n]+\n${_note_one}\n//g" \
+            -e"s/[^\n]+\n${_note_two}\n//g"
+    # Analyize
+    _note_one="${_note} The storage engine for the table doesn't support"
+    _note_one="${_note_one} analyze"
+    echo "${E1}Analyizing all databases.${E0} Dicarded notes include:"
+    echo "  ${_note_one}"
+    docker compose exec db sh -c 'mariadbcheck \
+        --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
+        --analyze' 2>&1 | gsed --regexp-extended --null-data \
+            -e"s/[^\n]+\n${_note_one}\n//g"
     echo
 }
 
 
-perform_content_maintenance() {
-    header 'Perform container content maintenance'
-    # https://www.mediawiki.org/wiki/Manual:RemoveUnusedAccounts.php
-    echo 'Removing unused accounts'
-    docker compose exec web /usr/bin/php \
-        /usr/share/mediawiki/maintenance/run removeUnusedAccounts --quiet \
-        --delete --ignore-touched 0
+perform_mw_content_maintenance() {
+    header 'Perform container MediaWiki content maintenance'
     # https://www.mediawiki.org/wiki/Manual:cleanupTitles.php
     echo 'Cleaning up page titles'
-    docker compose exec web /usr/bin/php \
-        /usr/share/mediawiki/maintenance/run cleanupTitles --quiet
+    mw_run_web cleanupTitles --quiet
+    # https://www.mediawiki.org/wiki/Manual:RemoveUnusedAccounts.php
+    echo 'Removing unused accounts'
+    mw_run_web removeUnusedAccounts --quiet --delete --ignore-touched 0
+
     # https://www.mediawiki.org/wiki/Manual:rebuildall.php
-    echo 'Rebuilding text index, recent changes, and refreshing links'
-    docker compose exec web /usr/bin/php \
-        /usr/share/mediawiki/maintenance/run rebuildall --quiet
-    echo
-}
-
-
-no_op() {
-    # Print no-op message"
-    printf "${E90}no-op: %s${E0}\n" "${@}"
-}
-
-
-optimize_tables() {
-    header 'Optimize MediaWiki database tables'
-    wpcli db optimize --color \
-        | sed -e'/Table does not support optimize/d' -e'/^status   : OK/d'
+    echo -n 'Rebuild all (rebuild text index, rebuild recent changes, and'
+    echo ' refresh links)'
+    mw_run_web rebuildall --quiet
     echo
 }
 
@@ -213,8 +243,26 @@ parse_command() {
         info) COMMAND=info;;
         pull) COMMAND=pull;;
         import) COMMAND=import;;
+        maint*) COMMAND=maintenance;;
         *) error_exit "invalid COMMAND: ${1}";;
     esac
+}
+
+
+prep_sql() {
+    header 'Prepare MediaWiki SQL'
+    print_var CACHE_SQL
+    echo '1. Update ENGINE: MyISAM to InnoDB'
+    echo '2. Update CHARSET: latin1 to binary'
+    # shellcheck disable=SC2016
+    echo '3. Update `searchindex` CHARSET to utf8mb4'
+    # shellcheck disable=SC2016
+    gsed --regexp-extended --null-data \
+        -e's/ENGINE=MyISAM/ENGINE=InnoDB/g' \
+        -e's/CHARSET=latin1/CHARSET=binary/g' \
+        -e's/(FULLTEXT KEY `si_text` \(`si_text`\)\n\) ENGINE=)InnoDB( DEFAULT CHARSET=)binary/\1InnoDB\2utf8mb4/' \
+        -i "${CACHE_SQL}"
+    echo
 }
 
 
@@ -242,6 +290,9 @@ pull_database() {
         > "${CACHE_SQL}.tmp"
     mv "${CACHE_SQL}.tmp" "${CACHE_SQL}"
     du -sh "${CACHE_SQL}"
+    echo 'Backing up database export and compressing it'
+    gzip --force --keep "${CACHE_SQL}"
+    du -sh "${CACHE_SQL}.gz"
     echo
 }
 
@@ -307,19 +358,12 @@ script_setup() {
         _err="${_err} to me named 'migrate')"
         error_exit "${_err}"
     fi
-    # Ensure docker daemon is running
-    if [[ ! -S /var/run/docker.sock ]]
+    if ! command -v gsed >/dev/null
     then
-        error_exit 'docker daemon is not running'
+        # shellcheck disable=SC2016
+        error_exit \
+             'GNU sed is required. If on macOS install `gnu-sed` via brew.'
     fi
-    # Ensure services are running
-    for _service in web web-bullseye db
-    do
-        if ! docker compose exec "${_service}" true 2>/dev/null
-        then
-            error_exit "docker service is not running: ${_service}"
-        fi
-    done
 
     CACHE_DIR=./cache
     mkdir -p "${CACHE_DIR}"
@@ -336,26 +380,6 @@ script_setup() {
     print_key_val 'Docker version' \
         "$(docker --version | sed -e's/^Docker *version *//')"
 
-    printf "${E30}${E107}%-22s${E0}\n" 'web container'
-    print_key_val 'Debian version' \
-        "$(docker compose exec web cat /etc/debian_version)"
-    print_key_val 'PHP version' \
-        "$(docker compose exec web /usr/bin/php --version \
-            | awk '/^PHP/ {print $2}')"
-    print_key_val 'MediaWiki version' \
-        "$(docker compose exec web apt-cache show mediawiki \
-            | awk '/^Version:/ {print $2}')"
-
-    printf "${E30}${E107}%-22s${E0}\n" 'web-bullseye container'
-    print_key_val 'Debian version' \
-        "$(docker compose exec web-bullseye cat /etc/debian_version)"
-    print_key_val 'PHP version' \
-        "$(docker compose exec web-bullseye /usr/bin/php --version \
-            | awk '/^PHP/ {print $2}')"
-    print_key_val 'MediaWiki version' \
-        "$(docker compose exec web-bullseye apt-cache show mediawiki \
-            | awk '/^Version:/ {print $2}')"
-
     echo
     staff_only_notice
 }
@@ -368,14 +392,20 @@ show_help() {
     bold 'Commands'
     # help
     echo 'help        print this help message and exit'
+    echo
+    # info
     echo 'info        print setup information'
     echo
     # pull
     echo -n 'pull        pull MediaWiki database and images files from'
-    echo ' production Bytemark server'
+    echo ' production Bytemark'
+    echo '            server'
     echo
     # import
-    echo -n 'import      import MediaWiki database and images files'
+    echo 'import      import MediaWiki database and images files'
+    echo
+    # maintenance
+    echo 'maint       perform MediaWiki database maintenance'
     echo
     exit
 }
@@ -407,17 +437,55 @@ test_ssh_to_prod() {
 }
 
 
-test_mediawiki_installed() {
-    if ! docker compose exec web test -f /etc/mediawiki/LocalSettings.php
+verify_docker_services() {
+    local _msg _target _service _webs
+    _target="${1}"
+    case "${_target}" in
+        all) _webs='web web-bullseye';;
+        minimal) _webs='web';;
+    esac
+    # Ensure docker daemon is running
+    if [[ ! -S /var/run/docker.sock ]]
     then
-        error_exit 'web: initial MediaWiki install has not been completed'
+        error_exit 'docker daemon is not running'
     fi
-    if ! docker compose exec web-bullseye \
-        test -f /etc/mediawiki/LocalSettings.php
+    # Ensure db service is running
+    if ! docker compose exec db true 2>/dev/null
     then
-        error_exit \
-            'web-bullseye: initial MediaWiki install has not been completed'
+        error_exit 'docker service is not running: db'
     fi
+    printf "${E30}${E107}%-22s${E0}\n" 'db container'
+    print_key_val 'Debian version' \
+        "$(docker compose exec db cat /etc/debian_version)"
+    print_key_val 'MariaDB version' \
+        "$(docker compose exec db mariadb --version \
+            | awk -F',' '{print $1}')"
+
+    # Ensure web services are running
+    for _service in ${_webs}
+    do
+        if ! docker compose exec "${_service}" true 2>/dev/null
+        then
+            error_exit "docker service is not running: ${_service}"
+        fi
+        if ! docker compose exec "${_service}" \
+            test -f /etc/mediawiki/LocalSettings.php
+        then
+            _msg="${_service}: initial MediaWiki install has not been"
+            _msg="${_msg} completed"
+            error_exit "${_msg}"
+        fi
+        printf "${E30}${E107}%-22s${E0}\n" "${_service} container"
+        print_key_val 'Debian version' \
+            "$(docker compose exec "${_service}" cat /etc/debian_version)"
+        print_key_val 'PHP version' \
+            "$(docker compose exec "${_service}" /usr/bin/php --version \
+                | awk '/^PHP/ {print $2}')"
+        print_key_val 'MediaWiki version' \
+            "$(docker compose exec "${_service}" apt-cache show mediawiki \
+                | awk '/^Version:/ {print $2}')"
+    done
+    echo
 }
 
 
@@ -440,14 +508,20 @@ case "${COMMAND}" in
 
     'import')
         script_setup
-        test_mediawiki_installed
+        verify_docker_services 'all'
         danger_confirm
         delete_mediawiki_images
         import_images
+        prep_sql
         import_database
         migrate_database
-        perform_database_maintenance
-        #perform_content_maintenance
-        #optimize_database
+        perform_mw_content_maintenance
+        database_maintenance
         ;;
+
+    'maintenance')
+        script_setup
+        verify_docker_services 'minimal'
+        perform_mw_content_maintenance
+        database_maintenance
 esac
