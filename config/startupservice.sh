@@ -10,9 +10,9 @@ E94="$(printf "\e[94m")"      # foreground: bright blue
 E97="$(printf "\e[97m")"      # foreground: bright white
 CONF_PATH='/etc/mediawiki'
 REQUIRED_VARIABLES=(
-    MYSQL_DATABASE
-    MYSQL_ROOT_PASSWORD
-    MYSQL_USER
+    MARIADB_DATABASE
+    MARIADB_ROOT_PASSWORD
+    MARIADB_USER
     MW_ADMIN_PASS
     MW_ADMIN_USER
     MW_DB_HOST
@@ -52,10 +52,10 @@ then
     echo 'Beginning MediaWiki installation'
     /usr/bin/php /usr/share/mediawiki/maintenance/run.php install \
         --confpath="${CONF_PATH}" \
-        --dbname="${MYSQL_DATABASE}" \
-        --dbpass="${MYSQL_ROOT_PASSWORD}" \
+        --dbname="${MARIADB_DATABASE}" \
+        --dbpass="${MARIADB_ROOT_PASSWORD}" \
         --dbserver="${MW_DB_HOST}:${MW_DB_PORT}" \
-        --dbuser="${MYSQL_USER}" \
+        --dbuser="${MARIADB_USER}" \
         --pass "${MW_ADMIN_PASS}" \
         --scriptpath="" \
         --server="${MW_SERVER_URL}" \
