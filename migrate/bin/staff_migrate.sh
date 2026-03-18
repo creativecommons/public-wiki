@@ -60,6 +60,22 @@ NOTICE_STAFF="\
 #### FUNCTIONS ################################################################
 
 
+add_and_configure_logo() {
+    print_header 'Add and configure logo'
+    print_var DOCKER_MW_IMAGES_DIR
+    echo 'Download logo to container (temporary location)'
+    docker compose exec web \
+        curl --location --output "${DOCKER_MW_IMAGES_DIR}/cc.svg" --silent \
+            'https://mirrors.creativecommons.org/presskit/icons/cc.svg'
+    docker compose exec web du -sh "${DOCKER_MW_IMAGES_DIR}/cc.svg"
+    echo 'Import logo to WikiMedia'
+    mw_run_web importImages --check-userblock --comment='Import CC logo' \
+        "${DOCKER_MW_IMAGES_DIR}/cc.svg"
+    echo 'Remove logo from container (temporary location)'
+    docker compose exec web rm -vf "${DOCKER_MW_IMAGES_DIR}/cc.svg"
+}
+
+
 command_help() {
     print_header 'Usage'
     echo "${SCRIPT_NAME} COMMAND"
@@ -135,7 +151,7 @@ database_maintenance(){
     _note='note     :'
     # Check
     _note_one="${_note} The storage engine for the table doesn't support check"
-    echo "${E1}Checking all databases.${E0} Dicarded notes include:"
+    echo "${E1}Check all databases.${E0} Dicarded notes include:"
     echo "  ${_note_one}"
     docker compose exec db sh -c 'mariadbcheck \
         --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
@@ -146,7 +162,7 @@ database_maintenance(){
     _note_one="${_note_one} analyze instead"
     _note_two="${_note} The storage engine for the table doesn't support"
     _note_two="${_note_two} optimize"
-    echo "${E1}Optimizing all databases.${E0} Dicarded notes include:"
+    echo "${E1}Optimize all databases.${E0} Dicarded notes include:"
     echo "  ${_note_one}"
     echo "  ${_note_two}"
     docker compose exec db sh -c 'mariadbcheck \
@@ -157,7 +173,7 @@ database_maintenance(){
     # Analyize
     _note_one="${_note} The storage engine for the table doesn't support"
     _note_one="${_note_one} analyze"
-    echo "${E1}Analyizing all databases.${E0} Dicarded notes include:"
+    echo "${E1}Analyize all databases.${E0} Dicarded notes include:"
     echo "  ${_note_one}"
     docker compose exec db sh -c 'mariadbcheck \
         --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
@@ -171,7 +187,7 @@ delete_mediawiki_images() {
     local _count
     print_header 'Delete MediaWiki images from container'
     print_var DOCKER_MW_IMAGES_DIR
-    echo -n 'Deleting contents of images directory:'
+    echo -n 'Delete contents of images directory:'
     echo " ${DOCKER_MW_IMAGES_DIR}/*"
     # (xargs is used to trim whitespace)
     _count=$(docker compose exec --user root web \
@@ -191,7 +207,7 @@ error_exit() {
 import_database() {
     print_header 'Import data into container database'
     print_var DOCKER_SQL
-    echo 'Importing database dump SQL on web-bullseye'
+    echo 'Import database dump SQL on web-bullseye'
     mw_run_web_bullseye sql.php --quiet "${DOCKER_SQL}"
     echo
 }
@@ -213,7 +229,7 @@ import_images() {
 migrate_database() {
     print_header 'Migrate container database'
     # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Migrating MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
+    echo 'Migrate MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
     mw_run_web_bullseye update.php --quiet --quick 2>&1 \
         | sed \
             -e'/cleanupUsersWithNoId.php to fix this situation./d' \
@@ -222,11 +238,11 @@ migrate_database() {
     echo 'Clean-up MediaWiki users with no ID on web-bullseye'
     mw_run_web_bullseye cleanupUsersWithNoId.php --quiet --prefix '*'
     # The above command should be the last one executed on web-bullseye
-    echo -n "${E93}Removing mw_run_web_bullseye() function for remaining"
+    echo -n "${E93}Remove mw_run_web_bullseye() function for remaining"
     echo " script run${E0}"
     unset -f mw_run_web_bullseye
     # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Migrating MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
+    echo 'Migrate MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
     mw_run_web update --quiet --quick
     echo
 }
@@ -235,43 +251,74 @@ migrate_database() {
 mw_maintenance_accounts() {
     print_header 'MediaWiki account maintenance'
     # https://www.mediawiki.org/wiki/Manual:RemoveUnusedAccounts.php
-    echo 'Removing unused accounts'
+    echo 'Remove unused accounts'
     mw_run_web removeUnusedAccounts --quiet --delete --ignore-touched 0
     echo
 }
 
 
-## Unneeded as we are using database dump
-#mw_maintenance_images() {
-#    local _dir
-#    print_header 'MediaWiki image maintenance'
-#    print_var DOCKER_MW_IMAGES_DIR
-#    # https://www.mediawiki.org/wiki/Manual:ImportImages.php
-#    for _dir in {0..9} {a..f}
-#    do
-#        echo "Import images: ${DOCKER_MW_IMAGES_DIR}/${_dir}"
-#        mw_run_web importImages --search-recursively --dry \
-#            "${DOCKER_MW_IMAGES_DIR}/${_dir}" 2>&1 \
-#            | grep -v 'exists, skipping$'
-#    done
-#    echo
-#}
+mw_maintenance_images() {
+    local _dir
+    print_header 'MediaWiki image maintenance'
+    print_var DOCKER_MW_IMAGES_DIR
+
+    # Unneeded as we are using a database dump (already includes image info)
+    ## https://www.mediawiki.org/wiki/Manual:ImportImages.php
+    #for _dir in {0..9} {a..f}
+    #do
+    #    echo "Import images: ${DOCKER_MW_IMAGES_DIR}/${_dir}"
+    #    mw_run_web importImages --search-recursively --dry \
+    #        "${DOCKER_MW_IMAGES_DIR}/${_dir}" 2>&1 \
+    #        | grep -v 'exists, skipping$'
+    #done
+    ## https://www.mediawiki.org/wiki/Manual:RebuildImages.php
+    #echo 'Rebuild images'
+    #mw_run_web rebuildImages
+
+    # Useless? Provides data that is unactionable.
+    ## https://www.mediawiki.org/wiki/Manual:CheckImages.php
+    #echo 'Check (verify) images'
+    #mw_run_web checkImages
+
+    # Useless? Provides data that is unactionable.
+    ## https://www.mediawiki.org/wiki/Manual:FindMissingFiles.php
+    #echo 'Find missing files'
+    #mw_run_web findMissingFiles
+
+    # https://www.mediawiki.org/wiki/Manual:RefreshImageMetadata.php
+    echo 'Refresh image metadata'
+    mw_run_web refreshImageMetadata --quiet
+
+    # https://www.mediawiki.org/wiki/Manual:RefreshFileHeaders.php
+    echo 'Refresh file headers'
+    mw_run_web refreshFileHeaders --quiet
+
+    # https://www.mediawiki.org/wiki/Manual:CleanupUploadStash.php
+    echo 'Clean-up upload stash'
+    mw_run_web cleanupUploadStash --quiet
+
+    echo
+}
 
 
 mw_maintenance_rebuild() {
     print_header 'MediaWiki rebuild maintenance'
     # Note: rebuildall.php is not used because individual scripts allow more
     # user feedback (more echo statements)
+
     # https://www.mediawiki.org/wiki/Manual:Rebuildtextindex.php
     echo 'Rebuild text index (rebuild the searchindex table)'
     mw_run_web rebuildtextindex --quiet
+
     # https://www.mediawiki.org/wiki/Manual:Rebuildrecentchanges.php
     echo 'Rebuild recent changes'
     mw_run_web rebuildrecentchanges --quiet
+
     # https://www.mediawiki.org/wiki/Manual:RefreshLinks.php
     echo -n 'Refresh links (refill pagelinks, categorylinks, and imagelinks'
     echo ' tables)'
     mw_run_web refreshLinks --quiet
+
     echo
 }
 
@@ -279,7 +326,7 @@ mw_maintenance_rebuild() {
 mw_maintenance_titles() {
     print_header 'MediaWiki titles maintenance'
     # https://www.mediawiki.org/wiki/Manual:cleanupTitles.php
-    echo 'Cleaning up page titles'
+    echo 'Clean-up page titles'
     mw_run_web cleanupTitles --quiet
     echo
 }
@@ -364,7 +411,7 @@ pull_database() {
         > "${CACHE_SQL}.tmp"
     mv "${CACHE_SQL}.tmp" "${CACHE_SQL}"
     du -sh "${CACHE_SQL}"
-    echo 'Backing up database export and compressing it'
+    echo 'Back up database export and compress it'
     gzip --force --keep "${CACHE_SQL}"
     du -sh "${CACHE_SQL}.gz"
     echo
@@ -558,9 +605,10 @@ case "${COMMAND}" in
         import_database
         migrate_database
         mw_maintenance_accounts
-        #mw_maintenance_images  # unneeded with database dump
+        mw_maintenance_images
         mw_maintenance_titles
         mw_maintenance_rebuild
+#broken-prob-requires-valid-accou-t#        add_and_configure_logo
         database_maintenance
         ;;
 
