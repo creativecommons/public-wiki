@@ -75,7 +75,7 @@ done
 echo 'Database is up!'
 
 
-# Install MediaWiki, if necessary
+# Install MediaWiki and configure, if necessary
 if [[ ! -f "${CONF_PATH}/LocalSettings.php" ]]
 then
     echo 'Beginning MediaWiki installation'
@@ -89,15 +89,32 @@ then
         --scriptpath="" \
         --server="${MW_SERVER_URL}" \
         "${MW_SITENAME}" "${MW_ADMIN_USER}"
+
+    # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
+    echo 'Enabling Uploads (wgEnableUploads)'
+    # shellcheck disable=SC2016
+    sed -e's|^\$wgEnableUploads = false;$|$wgEnableUploads = true;|' \
+        -i "${CONF_PATH}/LocalSettings.php"
+
+    # https://www.mediawiki.org/wiki/Manual:$wgRightsUrl
+    # https://www.mediawiki.org/wiki/Manual:$wgRightsText
+    # https://www.mediawiki.org/wiki/Manual:$wgRightsIcon
+    echo 'Enabling CC BY 4.0 (wgRightsUrl, wgRightsText, wgRightsIcon)'
+    _wgRightsUrl='https://creativecommons.org/licenses/by/4.0/'
+    _wgRightsText='Creative Commons Attribution 4.0 International'
+    _wgRightsIcon='https://licensebuttons.net/l/by/4.0/88x31.png'
+    sed --regexp-extended \
+        -e"s|^(.wgRightsUrl = \")(\";)|\\1${_wgRightsUrl}\\2|" \
+        -e"s|^(.wgRightsText = \")(\";)|\\1${_wgRightsText}\\2|" \
+        -e"s|^(.wgRightsIcon = \")(\";)|\\1${_wgRightsIcon}\\2|" \
+        -i "${CONF_PATH}/LocalSettings.php"
+    unset _wgRightsUrl _wgRightsText _wgRightsIcon
+
     # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
     echo 'Enabling Short URL (wgArticlePath)'
     # shellcheck disable=SC2016
     echo '$wgArticlePath = "/wiki/$1";' >> "${CONF_PATH}/LocalSettings.php"
-    # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
-    echo 'Enabling Uploads (wgEnableUploads)'
-    # shellcheck disable=SC2016
-    sed -e's/\$wgEnableUploads = false;/$wgEnableUploads = true;/' -i \
-        "${CONF_PATH}/LocalSettings.php"
+
     # https://www.mediawiki.org/wiki/Manual:$wgFileExtensions
     echo 'Adding file extensions (wgFileExtensions)'
     for _ext in "${FILE_EXTENSIONS[@]}"
