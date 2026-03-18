@@ -259,7 +259,7 @@ mw_maintenance_accounts() {
 
 
 mw_maintenance_rebuild() {
-    print_header 'MediaWiki rebuildmaintenance'
+    print_header 'MediaWiki rebuild maintenance'
     # Note: rebuildall.php is not used because individual scripts allow more
     # user feedback (more echo statements)
     # https://www.mediawiki.org/wiki/Manual:Rebuildtextindex.php
@@ -494,7 +494,7 @@ verify_docker_services() {
     then
         error_exit 'docker service is not running: db'
     fi
-    printf "${E30}${E107}%-24s${E0}\n" 'db container'
+    printf "${E30}${E107}%-24s${E0}\n" ' db container'
     print_key_val 'Debian version' \
         "$(docker compose exec db cat /etc/debian_version)"
     print_key_val 'MariaDB version' \
@@ -515,7 +515,7 @@ verify_docker_services() {
             _msg="${_msg} completed"
             error_exit "${_msg}"
         fi
-        printf "${E30}${E107}%-24s${E0}\n" "${_service} container"
+        printf "${E30}${E107}%-24s${E0}\n" " ${_service} container"
         print_key_val 'Debian version' \
             "$(docker compose exec "${_service}" cat /etc/debian_version)"
         print_key_val 'PHP version' \
