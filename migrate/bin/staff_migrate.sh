@@ -1,10 +1,13 @@
 #!/bin/bash
 #
 # Notes:
-# - This script can only be run by Creative Commons (CC) staff--it requires
-#   shell access to the legacy production server
+# - See NOTICE_ variables below
 # - If you modify this file, please re-check it with shellcheck
-# - '| xargs' is used to trim whitespace
+# - https://www.mediawiki.org/wiki/Manual:ImportImages.php
+#   mw_run_web importImages is unnecessary because we are using a database
+#   dump. This was verified by running the import (every file found was
+#   skipped).
+#
 set -o errexit
 set -o errtrace
 set -o nounset
@@ -35,23 +38,65 @@ PROD_MW_DB=ccwiki
 PROD_MW_HOST=wiki.creativecommons.org
 declare -i RSYNC_PROT_VER_MIN=31
 SCRIPT_NAME="${0##*/}"
-# The configure_environment() function sets the following global variables:
+# The script_setup() function sets the following global variables:
 CACHE_SQL=''
 CACHE_DIR=''
 CACHE_IMAGES_DIR=''
 DOCKER_SQL=''
 DOCKER_MW_IMAGES_DIR=''
-# The parse_command() function sets the following global variables:
+# The command_parse() function sets the following global variables:
 COMMAND=''
 # The rsync_version() function sets the following global variables:
 declare -i RSYNC_PROT_VER=0
-
+NOTICE_CONTAINERS="\
+⚠️ This script's import command requires the services in
+   REPO/migrate/docker-compose.yml, which includes both web-bullseye (MediaWiki
+   1.35.13) and web (MediaWiki 1.43.6). Care should be taken as they share the
+   same images Docker volume and database."
+NOTICE_STAFF="\
+⚠️ This script's pull command can only be run by Creative Commons (CC) team
+   members--it requires shell access to the legacy production server."
 
 #### FUNCTIONS ################################################################
 
 
-bold() {
-    printf "${E1}%s${E0}\n" "${@}"
+command_help() {
+    print_header 'Usage'
+    echo "${SCRIPT_NAME} COMMAND"
+    echo
+    echo "${E97}Commands${E0}"
+    # help
+    echo 'help        print this help message and exit'
+    echo
+    # test
+    echo 'info        run tests and print setup information'
+    echo
+    # pull
+    echo -n 'pull        pull MediaWiki database and images files from'
+    echo ' production Bytemark'
+    echo '            server'
+    echo
+    # import
+    echo 'import      import MediaWiki database and images files'
+    echo
+}
+
+
+command_parse() {
+    if [[ -z "${1}" ]]
+    then
+        error_exit 'a COMMAND is required'
+    elif [[ -n "${2:-}" ]]
+    then
+        error_exit 'only a single COMMAND is allowed'
+    fi
+    case "${1:-}" in
+        -h*|--h*|h*|'-?'|'--?'|'?') COMMAND='help';;
+        test) COMMAND='test';;
+        pull) COMMAND='pull';;
+        import) COMMAND='import';;
+        *) error_exit "invalid COMMAND: ${1}";;
+    esac
 }
 
 
@@ -84,100 +129,9 @@ danger_confirm() {
 }
 
 
-delete_mediawiki_images() {
-    local _count
-    header 'Delete MediaWiki images from container'
-    print_var DOCKER_MW_IMAGES_DIR
-    echo -n 'Deleting contents of images directory:'
-    echo " ${DOCKER_MW_IMAGES_DIR}/*"
-    # (xargs is used to trim whitespace)
-    _count=$(docker compose exec --user root web \
-        sh -c "rm -frv ${DOCKER_MW_IMAGES_DIR}/* | wc -l | xargs")
-    success "Directories/files removed: ${_count}"
-    echo
-}
-
-
-error_exit() {
-    # Echo error message and exit with error
-    echo -e "${E31}ERROR:${E0} ${*}" 1>&2
-    exit 1
-}
-
-
-header() {
-    # Print 80 character wide black on white heading
-    printf "${E30}${E107} %-71s$(date '+%T') ${E0}\n" "${@}"
-}
-
-
-import_database() {
-    header 'Import data into container database'
-    print_var DOCKER_SQL
-    echo 'Importing database dump SQL on web-bullseye'
-    mw_run_web_bullseye sql.php --quiet "${DOCKER_SQL}"
-    echo
-}
-
-
-import_images() {
-    header 'Import images into container'
-    print_var CACHE_IMAGES_DIR
-    print_var DOCKER_MW_IMAGES_DIR
-    echo 'Copy cache images to docker temp images dir'
-    find "${CACHE_IMAGES_DIR}/"* -maxdepth 0 -print0 \
-        | xargs --null -I {} docker compose cp {} "web:${DOCKER_MW_IMAGES_DIR}"
-    echo 'Set ownership of entire images dir to www-data:wwww-data'
-    docker compose exec --user root web chown -R www-data:www-data \
-        "${DOCKER_MW_IMAGES_DIR}"
-    echo
-}
-
-
-migrate_database() {
-    header 'Migrate container database'
-    # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Migrating MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
-    mw_run_web_bullseye update.php --quiet --quick 2>&1 \
-        | sed \
-            -e'/cleanupUsersWithNoId.php to fix this situation./d' \
-            -e'/^$/d'
-    # https://www.mediawiki.org/wiki/Manual:CleanupUsersWithNoId.php
-    echo 'Clean-up MediaWiki users with no ID on web-bullseye'
-    mw_run_web_bullseye cleanupUsersWithNoId.php --quiet --prefix '*'
-    echo 'Stopping web-bullseye container'
-    docker compose stop web-bullseye
-    # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Migrating MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
-    mw_run_web update --quiet --quick
-    echo
-}
-
-
-mw_run_web() {
-    # https://www.mediawiki.org/wiki/Manual:Maintenance_scripts
-    #     Since MediaWiki 1.40, maintenance scripts should be invoked
-    #     indirectly through php ./maintenance/run.php. Invoking maintenance
-    #     scripts directly will trigger a warning.
-    docker compose exec web /usr/bin/php \
-        /usr/share/mediawiki/maintenance/run "${@}"
-}
-
-
-mw_run_web_bullseye() {
-    # https://www.mediawiki.org/wiki/Manual:Sql.php, for example:
-    #     In MediaWiki version MediaWiki 1.39 and earlier, you must invoke
-    #     maintenance scripts using php maintenance/scriptName.php instead of
-    #     php maintenance/run.php scriptName.
-    # shellcheck disable=SC2145
-    docker compose exec web-bullseye /usr/bin/php \
-        /usr/share/mediawiki/maintenance/"${@}"
-}
-
-
 database_maintenance(){
     local _note _note_one _note_two
-    header 'Optimize MediaWiki database tables'
+    print_header 'Optimize MediaWiki database tables'
     _note='note     :'
     # Check
     _note_one="${_note} The storage engine for the table doesn't support check"
@@ -213,44 +167,158 @@ database_maintenance(){
 }
 
 
-perform_mw_content_maintenance() {
-    header 'Perform container MediaWiki content maintenance'
-    # https://www.mediawiki.org/wiki/Manual:cleanupTitles.php
-    echo 'Cleaning up page titles'
-    mw_run_web cleanupTitles --quiet
-    # https://www.mediawiki.org/wiki/Manual:RemoveUnusedAccounts.php
-    echo 'Removing unused accounts'
-    mw_run_web removeUnusedAccounts --quiet --delete --ignore-touched 0
-
-    # https://www.mediawiki.org/wiki/Manual:rebuildall.php
-    echo -n 'Rebuild all (rebuild text index, rebuild recent changes, and'
-    echo ' refresh links)'
-    mw_run_web rebuildall --quiet
+delete_mediawiki_images() {
+    local _count
+    print_header 'Delete MediaWiki images from container'
+    print_var DOCKER_MW_IMAGES_DIR
+    echo -n 'Deleting contents of images directory:'
+    echo " ${DOCKER_MW_IMAGES_DIR}/*"
+    # (xargs is used to trim whitespace)
+    _count=$(docker compose exec --user root web \
+        sh -c "rm -frv ${DOCKER_MW_IMAGES_DIR}/* | wc -l | xargs")
+    success "Directories/files removed: ${_count}"
     echo
 }
 
 
-parse_command() {
-    if [[ -z "${1}" ]]
-    then
-        error_exit 'a COMMAND is required'
-    elif [[ -n "${2:-}" ]]
-    then
-        error_exit 'only a single COMMAND is allowed'
-    fi
-    case "${1:-}" in
-        -h*|--h*|h*|'-?'|'--?'|'?') COMMAND=help;;
-        info) COMMAND=info;;
-        pull) COMMAND=pull;;
-        import) COMMAND=import;;
-        maint*) COMMAND=maintenance;;
-        *) error_exit "invalid COMMAND: ${1}";;
-    esac
+error_exit() {
+    # Echo error message and exit with error
+    echo -e "${E31}ERROR:${E0} ${*}" 1>&2
+    exit 1
 }
 
 
+import_database() {
+    print_header 'Import data into container database'
+    print_var DOCKER_SQL
+    echo 'Importing database dump SQL on web-bullseye'
+    mw_run_web_bullseye sql.php --quiet "${DOCKER_SQL}"
+    echo
+}
+
+
+import_images() {
+    print_header 'Import images into container'
+    print_var CACHE_IMAGES_DIR
+    print_var DOCKER_MW_IMAGES_DIR
+    echo 'Copy cache images to docker temp images dir'
+    docker compose cp ./cache/images/. "web:${DOCKER_MW_IMAGES_DIR}/"
+    echo 'Set ownership of entire images dir to www-data:wwww-data'
+    docker compose exec --user root web chown -R www-data:www-data \
+        "${DOCKER_MW_IMAGES_DIR}"
+    echo
+}
+
+
+migrate_database() {
+    print_header 'Migrate container database'
+    # https://www.mediawiki.org/wiki/Manual:Update.php
+    echo 'Migrating MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
+    mw_run_web_bullseye update.php --quiet --quick 2>&1 \
+        | sed \
+            -e'/cleanupUsersWithNoId.php to fix this situation./d' \
+            -e'/^$/d'
+    # https://www.mediawiki.org/wiki/Manual:CleanupUsersWithNoId.php
+    echo 'Clean-up MediaWiki users with no ID on web-bullseye'
+    mw_run_web_bullseye cleanupUsersWithNoId.php --quiet --prefix '*'
+    # The above command should be the last one executed on web-bullseye
+    echo -n "${E93}Removing mw_run_web_bullseye() function for remaining"
+    echo " script run${E0}"
+    unset -f mw_run_web_bullseye
+    # https://www.mediawiki.org/wiki/Manual:Update.php
+    echo 'Migrating MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
+    mw_run_web update --quiet --quick
+    echo
+}
+
+
+mw_maintenance_accounts() {
+    print_header 'MediaWiki account maintenance'
+    # https://www.mediawiki.org/wiki/Manual:RemoveUnusedAccounts.php
+    echo 'Removing unused accounts'
+    mw_run_web removeUnusedAccounts --quiet --delete --ignore-touched 0
+    echo
+}
+
+
+## Unneeded as we are using database dump
+#mw_maintenance_images() {
+#    local _dir
+#    print_header 'MediaWiki image maintenance'
+#    print_var DOCKER_MW_IMAGES_DIR
+#    # https://www.mediawiki.org/wiki/Manual:ImportImages.php
+#    for _dir in {0..9} {a..f}
+#    do
+#        echo "Import images: ${DOCKER_MW_IMAGES_DIR}/${_dir}"
+#        mw_run_web importImages --search-recursively --dry \
+#            "${DOCKER_MW_IMAGES_DIR}/${_dir}" 2>&1 \
+#            | grep -v 'exists, skipping$'
+#    done
+#    echo
+#}
+
+
+mw_maintenance_rebuild() {
+    print_header 'MediaWiki rebuildmaintenance'
+    # Note: rebuildall.php is not used because individual scripts allow more
+    # user feedback (more echo statements)
+    # https://www.mediawiki.org/wiki/Manual:Rebuildtextindex.php
+    echo 'Rebuild text index (rebuild the searchindex table)'
+    mw_run_web rebuildtextindex --quiet
+    # https://www.mediawiki.org/wiki/Manual:Rebuildrecentchanges.php
+    echo 'Rebuild recent changes'
+    mw_run_web rebuildrecentchanges --quiet
+    # https://www.mediawiki.org/wiki/Manual:RefreshLinks.php
+    echo -n 'Refresh links (refill pagelinks, categorylinks, and imagelinks'
+    echo ' tables)'
+    mw_run_web refreshLinks --quiet
+    echo
+}
+
+
+mw_maintenance_titles() {
+    print_header 'MediaWiki titles maintenance'
+    # https://www.mediawiki.org/wiki/Manual:cleanupTitles.php
+    echo 'Cleaning up page titles'
+    mw_run_web cleanupTitles --quiet
+    echo
+}
+
+
+mw_run_web() {
+    # https://www.mediawiki.org/wiki/Manual:Maintenance_scripts
+    #     Since MediaWiki 1.40, maintenance scripts should be invoked
+    #     indirectly through php ./maintenance/run.php. Invoking maintenance
+    #     scripts directly will trigger a warning.
+    docker compose exec web /usr/bin/php \
+        /usr/share/mediawiki/maintenance/run "${@}"
+}
+
+
+mw_run_web_bullseye() {
+    # https://www.mediawiki.org/wiki/Manual:Sql.php, for example:
+    #     In MediaWiki version MediaWiki 1.39 and earlier, you must invoke
+    #     maintenance scripts using php maintenance/scriptName.php instead of
+    #     php maintenance/run.php scriptName.
+    # shellcheck disable=SC2145
+    docker compose exec web-bullseye /usr/bin/php \
+        /usr/share/mediawiki/maintenance/"${@}"
+}
+
+
+notice_staff_only() {
+    echo "${E93}${NOTICE_STAFF}${E0}"
+    echo
+}
+
+
+notice_containers() {
+    echo "${E93}${NOTICE_CONTAINERS}${E0}"
+    echo
+}
+
 prep_sql() {
-    header 'Prepare MediaWiki SQL'
+    print_header 'Prepare MediaWiki SQL'
     print_var CACHE_SQL
     echo '1. Update ENGINE: MyISAM to InnoDB'
     echo '2. Update CHARSET: latin1 to binary'
@@ -266,8 +334,14 @@ prep_sql() {
 }
 
 
+print_header() {
+    # Print 80 character wide black on white heading
+    printf "${E30}${E107}# %-69s$(date '+%T') ${E0}\n" "${@}"
+}
+
+
 print_key_val() {
-    printf "${E97}${E100}%22s${E0} %s\n" "${1}:" "${2}"
+    printf "${E97}${E100}%24s${E0} %s\n" "${1}:" "${2}"
 }
 
 
@@ -278,7 +352,7 @@ print_var() {
 
 pull_database() {
     # https://www.mediawiki.org/wiki/Manual:Backing_up_a_wiki
-    header 'Pull MediaWiki database from legacy production server'
+    print_header 'Pull MediaWiki database from legacy production server'
     print_var PROD_SERVER
     print_var PROD_MW_DB
     print_var CACHE_SQL
@@ -299,7 +373,7 @@ pull_database() {
 
 pull_images() {
     # https://www.mediawiki.org/wiki/Manual:Backing_up_a_wiki
-    header 'Pull MediaWiki images files from legacy production server'
+    print_header 'Pull MediaWiki images files from legacy production server'
     print_var PROD_SERVER
     print_var PROD_IMAGES_DIR
     print_var CACHE_DIR
@@ -312,6 +386,7 @@ pull_images() {
         --partial \
         --prune-empty-dirs \
         --times \
+        --exclude 'CVS' \
         --exclude 'lock_*' \
         --exclude '.htaccess' \
         --stats \
@@ -349,7 +424,7 @@ script_setup() {
         error_exit 'only a macOS (Darwin) environment is supported'
     fi
 
-    header "Setup environment: local docker development"
+    print_header "Setup environment: local docker development"
     # Check execution environment
     if [[ "${PWD##*/}" != 'migrate' ]]
     then
@@ -381,41 +456,6 @@ script_setup() {
         "$(docker --version | sed -e's/^Docker *version *//')"
 
     echo
-    staff_only_notice
-}
-
-
-show_help() {
-    header 'Usage'
-    echo "${SCRIPT_NAME} COMMAND"
-    echo
-    bold 'Commands'
-    # help
-    echo 'help        print this help message and exit'
-    echo
-    # info
-    echo 'info        print setup information'
-    echo
-    # pull
-    echo -n 'pull        pull MediaWiki database and images files from'
-    echo ' production Bytemark'
-    echo '            server'
-    echo
-    # import
-    echo 'import      import MediaWiki database and images files'
-    echo
-    # maintenance
-    echo 'maint       perform MediaWiki database maintenance'
-    echo
-    exit
-}
-
-
-staff_only_notice() {
-    echo -n "${E93}⚠️ This script can only be run by Creative Commons (CC)"
-    echo " staff--it requires shell${E0}"
-    echo "${E93}   access to the production server${E0}"
-    echo
 }
 
 
@@ -425,7 +465,7 @@ success() {
 
 
 test_ssh_to_prod() {
-    header 'Test SSH connection to production server'
+    print_header 'Test SSH connection to production server'
     print_var PROD_SERVER
     if ! ssh "${PROD_SERVER}" true
     then
@@ -454,7 +494,7 @@ verify_docker_services() {
     then
         error_exit 'docker service is not running: db'
     fi
-    printf "${E30}${E107}%-22s${E0}\n" 'db container'
+    printf "${E30}${E107}%-24s${E0}\n" 'db container'
     print_key_val 'Debian version' \
         "$(docker compose exec db cat /etc/debian_version)"
     print_key_val 'MariaDB version' \
@@ -475,7 +515,7 @@ verify_docker_services() {
             _msg="${_msg} completed"
             error_exit "${_msg}"
         fi
-        printf "${E30}${E107}%-22s${E0}\n" "${_service} container"
+        printf "${E30}${E107}%-24s${E0}\n" "${_service} container"
         print_key_val 'Debian version' \
             "$(docker compose exec "${_service}" cat /etc/debian_version)"
         print_key_val 'PHP version' \
@@ -492,15 +532,16 @@ verify_docker_services() {
 #### MAIN #####################################################################
 
 cd "${DIR_MIGRATE}"
-parse_command "${@:-}"
+command_parse "${@:-}"
 case "${COMMAND}" in
     # the following are sorted by order of operations then lexicographically
-    'help') show_help;;
-
-    'info') script_setup;;
+    'help')
+        command_help
+        ;;
 
     'pull')
         script_setup
+        notice_staff_only
         test_ssh_to_prod
         pull_images
         pull_database
@@ -509,19 +550,25 @@ case "${COMMAND}" in
     'import')
         script_setup
         verify_docker_services 'all'
+        notice_containers
         danger_confirm
         delete_mediawiki_images
         import_images
         prep_sql
         import_database
         migrate_database
-        perform_mw_content_maintenance
+        mw_maintenance_accounts
+        #mw_maintenance_images  # unneeded with database dump
+        mw_maintenance_titles
+        mw_maintenance_rebuild
         database_maintenance
         ;;
 
-    'maintenance')
+    'test')
         script_setup
-        verify_docker_services 'minimal'
-        perform_mw_content_maintenance
-        database_maintenance
+        verify_docker_services 'all'
+        notice_staff_only
+        notice_containers
+        test_ssh_to_prod
+        ;;
 esac
