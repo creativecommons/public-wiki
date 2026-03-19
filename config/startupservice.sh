@@ -59,14 +59,23 @@ echo 'Database is up!'
 # Install and configure MediaWiki, if necessary
 if [[ ! -f "${CONF_PATH}/LocalSettings.php" ]]
 then
+    if [[ "${CONTAINER}" == 'web' ]]
+    then
+        echo -n 'Waiting 5 seconds so that web-bullseye can complete install'
+        echo ' first'
+        sleep 5
+    fi
     /usr/local/sbin/configure_mediawiki.sh
 else
     echo "${E90}Skipping MediaWiki installation (config present)${E0}"
 fi
 
-
 if [[ "${CONTAINER}" == 'web' ]]
 then
+    # Prepare for MediaWiki file cache
+    mkdir -p /tmp/mediawiki_file_cache
+    chown www-data:www-data /tmp/mediawiki_file_cache
+
     "${APACHECTL}" -v
     echo "${E97}Starting apache2 webserver: ${E94}${MW_SERVER_URL}/${E0}"
     "${APACHECTL}" -D FOREGROUND -k start

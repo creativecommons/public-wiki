@@ -67,6 +67,8 @@ services:
       - ../config/db.cnf:/etc/mysql/conf.d/db.cnf:ro
       # Data
       - volume-mysql:/var/lib/mysql
+      # Migration cache (read-only)
+      - ./cache:/var/migration-cache:ro
 
 volumes:
   volume-mysql:

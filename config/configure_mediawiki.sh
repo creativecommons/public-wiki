@@ -46,6 +46,8 @@ ${MW_INSTALL} \
     --dbpass="${MARIADB_ROOT_PASSWORD}" \
     --dbserver="${MW_DB_HOST}:${MW_DB_PORT}" \
     --dbuser="${MARIADB_USER}" \
+    --installdbpass="${MARIADB_ROOT_PASSWORD}" \
+    --installdbuser="${MARIADB_USER}" \
     --pass "${MW_ADMIN_PASS}" \
     --scriptpath="" \
     --server="${MW_SERVER_URL}" \
@@ -81,6 +83,23 @@ sed --regexp-extended --null-data \
     -e"s|(\\\$wgLogos[^;]+;)|\\1\\n\$wgFavicon = \"${_favicon}\";|" \
     -i "${CONF_PATH}/LocalSettings.php"
 unset _favicon
+
+# https://www.mediawiki.org/wiki/Manual:$wgSessionCacheType
+bold 'Configure session cache ($wgSessionCacheType)'
+_session_cache='$wgSessionCacheType = CACHE_DB;'
+sed --regexp-extended --null-data \
+    -e"s|(\\\$wgMainCacheType[^;]+;)|\\1\\n${_session_cache}|" \
+    -i "${CONF_PATH}/LocalSettings.php"
+unset _session_cache
+
+# https://www.mediawiki.org/wiki/Manual:$wgUseFileCache
+bold 'Configure file cache ($wgUseFileCache, $wgFileCacheDirectory)'
+_file_cache='$wgUseFileCache = true;\n$wgFileCacheDirectory ='
+_file_cache="${_file_cache} \"/tmp/mediawiki_file_cache\";"
+sed --regexp-extended --null-data \
+    -e"s|(\\\$wgMemCachedServers[^;]+;)|\\1\\n${_file_cache}|" \
+    -i "${CONF_PATH}/LocalSettings.php"
+unset _file_cache
 
 # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
 bold 'Enable Uploads ($wgEnableUploads)'

@@ -78,3 +78,20 @@ following:
 - [Manual:**Maintenance scripts/List of scripts** - MediaWiki][mw_list_scripts]
 
 [mw_list_scripts]: https://www.mediawiki.org/wiki/Manual:Maintenance_scripts/List_of_scripts
+
+
+## MediaWiki release notes
+
+- [MediaWiki 1.31 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.31)
+- [MediaWiki 1.32 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.32)
+- [MediaWiki 1.33 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.33)
+- [MediaWiki 1.34 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.34)
+- [MediaWiki 1.35 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.35)
+- [MediaWiki 1.36 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.36)
+- [MediaWiki 1.37 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.37)
+- [MediaWiki 1.38 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.38)
+- [MediaWiki 1.39 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.39)
+- [MediaWiki 1.40 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.40)
+- [MediaWiki 1.41 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.41)
+- [MediaWiki 1.42 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.42)
+- [MediaWiki 1.43 - MediaWiki](https://www.mediawiki.org/wiki/MediaWiki_1.43)

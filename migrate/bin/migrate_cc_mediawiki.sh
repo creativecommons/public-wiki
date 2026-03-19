@@ -23,9 +23,9 @@ CACHE_IMAGES_DIR="${CACHE_DIR}/images"
 CACHE_SQL="${CACHE_DIR}/legacy_mediawiki_export.sql"
 DIR_MIGRATE="$(cd -P -- "${0%/*}/.." && pwd -P)"
 DOCKER_CACHE_IMAGES_DIR=/var/migration-cache/images
+DOCKER_CACHE_SQL=/var/migration-cache/legacy_mediawiki_export.sql
 DOCKER_MW_DIR=/var/lib/mediawiki
 DOCKER_MW_IMAGES_DIR="${DOCKER_MW_DIR}/images"
-DOCKER_SQL="/var/migration-cache/legacy_mediawiki_export.sql"
 # The command_parse() function sets the COMMAND variables:
 COMMAND=''
 # https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -167,6 +167,37 @@ database_maintenance(){
 }
 
 
+database_update() {
+    print_header 'Update database'
+
+    # https://www.mediawiki.org/wiki/Manual:Update.php
+    echo 'Update MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
+    mw_run_web_bullseye update.php --quiet --quick 2>&1 \
+        | sed \
+            -e'/cleanupUsersWithNoId.php to fix this situation./d' \
+            -e'/^$/d'
+
+    # https://www.mediawiki.org/wiki/Manual:CleanupUsersWithNoId.php
+    echo 'Clean-up MediaWiki users with no ID on web-bullseye'
+    mw_run_web_bullseye cleanupUsersWithNoId.php --quiet --prefix '*'
+
+    # Unneeded. Probably handled by update
+    ## https://www.mediawiki.org/wiki/Manual:MigrateActors.php
+    #echo 'Migrate actors'
+    #mw_run_web_bullseye migrateActors.php --quiet
+
+    # The above command should be the last one executed on web-bullseye
+    echo -n "${E93}Remove mw_run_web_bullseye() function for remaining"
+    echo " script run${E0}"
+    unset -f mw_run_web_bullseye
+
+    # https://www.mediawiki.org/wiki/Manual:Update.php
+    echo 'Update MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
+    mw_run_web update --quiet --quick
+    echo
+}
+
+
 error_exit() {
     # Echo error message and exit with error
     echo -e "${E31}ERROR:${E0} ${*}" 1>&2
@@ -175,11 +206,18 @@ error_exit() {
 
 
 import_database() {
-    print_header 'Import data into container database'
-    print_var DOCKER_SQL
-    echo 'Import database dump SQL on web-bullseye'
-    mw_run_web_bullseye sql.php --quiet "${DOCKER_SQL}"
+    print_header 'Import data into database'
+    print_var DOCKER_CACHE_SQL
+    echo 'Import database dump SQL'
+    docker compose exec --env DOCKER_CACHE_SQL="${DOCKER_CACHE_SQL}" db \
+        sh -c '/usr/bin/mariadb my_wiki --password="${MARIADB_ROOT_PASSWORD}" \
+            < "${DOCKER_CACHE_SQL}"'
     echo
+    #echo 'Restoring new admin password'
+    #docker compose exec web-bullseye sh -c '/usr/bin/php \
+    #    /usr/share/mediawiki/maintenance/changePassword.php \
+    #        --user admin --password "${MW_ADMIN_PASS}"'
+    #echo
 }
 
 
@@ -205,28 +243,6 @@ import_images() {
     echo 'Set ownership of entire images dir to www-data:wwww-data'
     docker compose exec --user root web chown -R www-data:www-data \
         "${DOCKER_MW_IMAGES_DIR}"
-    echo
-}
-
-
-migrate_database() {
-    print_header 'Migrate container database'
-    # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Migrate MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
-    mw_run_web_bullseye update.php --quiet --quick 2>&1 \
-        | sed \
-            -e'/cleanupUsersWithNoId.php to fix this situation./d' \
-            -e'/^$/d'
-    # https://www.mediawiki.org/wiki/Manual:CleanupUsersWithNoId.php
-    echo 'Clean-up MediaWiki users with no ID on web-bullseye'
-    mw_run_web_bullseye cleanupUsersWithNoId.php --quiet --prefix '*'
-    # The above command should be the last one executed on web-bullseye
-    echo -n "${E93}Remove mw_run_web_bullseye() function for remaining"
-    echo " script run${E0}"
-    unset -f mw_run_web_bullseye
-    # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Migrate MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
-    mw_run_web update --quiet --quick
     echo
 }
 
@@ -579,7 +595,7 @@ case "${COMMAND}" in
         import_images
         prep_sql
         import_database
-        migrate_database
+        database_update
         mw_maintenance_accounts
         mw_maintenance_images
         mw_maintenance_titles
