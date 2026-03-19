@@ -52,14 +52,18 @@ RUN apt-get update \
     && rm --recursive --force /var/lib/apt/lists/* \
     && update-ca-certificates
 
+# Add MediaWiki configuration script
+COPY config/configure_mediawiki.sh /usr/local/sbin/configure_mediawiki.sh
+RUN chmod +x /usr/local/sbin/configure_mediawiki.sh
+
 # Add Apache2's www-data user to sudo group and enable passwordless startup
 RUN adduser www-data sudo
 COPY config/www-data_startupservice /etc/sudoers.d/www-data_startupservice
 
 # Add Apache2 service startup script
-COPY ../config/startupservice.sh /startupservice.sh
-RUN chmod +x /startupservice.sh
-CMD ["sudo", "--preserve-env", "/startupservice.sh"]
+COPY config/startupservice.sh /usr/local/sbin/startupservice.sh
+RUN chmod +x /usr/local/sbin/startupservice.sh
+CMD ["sudo", "--preserve-env", "/usr/local/sbin/startupservice.sh"]
 
 # Enable Apache modules - NOTE: PHP version
 RUN a2enmod headers \

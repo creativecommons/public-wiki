@@ -60,22 +60,6 @@ NOTICE_STAFF="\
 #### FUNCTIONS ################################################################
 
 
-add_and_configure_logo() {
-    print_header 'Add and configure logo'
-    print_var DOCKER_MW_IMAGES_DIR
-    echo 'Download logo to container (temporary location)'
-    docker compose exec web \
-        curl --location --output "${DOCKER_MW_IMAGES_DIR}/cc.svg" --silent \
-            'https://mirrors.creativecommons.org/presskit/icons/cc.svg'
-    docker compose exec web du -sh "${DOCKER_MW_IMAGES_DIR}/cc.svg"
-    echo 'Import logo to WikiMedia'
-    mw_run_web importImages --check-userblock --comment='Import CC logo' \
-        "${DOCKER_MW_IMAGES_DIR}/cc.svg"
-    echo 'Remove logo from container (temporary location)'
-    docker compose exec web rm -vf "${DOCKER_MW_IMAGES_DIR}/cc.svg"
-}
-
-
 command_help() {
     print_header 'Usage'
     echo "${SCRIPT_NAME} COMMAND"
@@ -608,7 +592,6 @@ case "${COMMAND}" in
         mw_maintenance_images
         mw_maintenance_titles
         mw_maintenance_rebuild
-#broken-prob-requires-valid-accou-t#        add_and_configure_logo
         database_maintenance
         ;;
 
