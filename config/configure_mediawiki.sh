@@ -30,7 +30,6 @@ then
 else
     MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/run.php install'
 fi
-MW_UPLOAD_PATH='/usr/share/mediawiki/images'
 VOCAB_REPO='https://raw.githubusercontent.com/creativecommons/vocabulary'
 
 
@@ -40,7 +39,6 @@ bold() {
 
 
 bold 'Begin MediaWiki installation'
-mkdir -p "${MW_UPLOAD_PATH}/assets"
 # https://www.mediawiki.org/wiki/Manual:Install.php
 ${MW_INSTALL} \
     --confpath="${CONF_PATH}" \
@@ -51,7 +49,7 @@ ${MW_INSTALL} \
     --pass "${MW_ADMIN_PASS}" \
     --scriptpath="" \
     --server="${MW_SERVER_URL}" \
-    --skins='Vector' \
+    --skins=Vector \
     "${MW_SITENAME}" "${MW_ADMIN_USER}" \
     | sed --regexp-extended \
         -e'/^Warning:.*default directory for uploads.*not checked/d' \
@@ -59,11 +57,12 @@ ${MW_INSTALL} \
 
 # https://www.mediawiki.org/wiki/Manual:$wgLogos
 bold 'Install logo ($wgLogos)'
+mkdir -p /var/lib/mediawiki/assets
 curl --fail --location \
-    --output "${MW_UPLOAD_PATH}/assets/cc.svg" \
+    --output /var/lib/mediawiki/assets/cc.svg \
     --silent --show-error \
     "${VOCAB_REPO}/refs/heads/main/src/svg/cc/logos/cc/lettermark.svg"
-_logo='/images/assets/cc.svg'
+_logo=/assets/cc.svg
 sed --regexp-extended \
     -e'/^\s+.1x. => "\$wgResourceBasePath/d' \
     -e"s|(^\\s+.icon. => \")\\\$wgResourceBasePath.*$|\\1${_logo}\",|" \
@@ -72,11 +71,12 @@ unset _logo
 
 # https://www.mediawiki.org/wiki/Manual:$wgFavicon
 bold 'Install favicon ($wgFavicon)'
+mkdir -p /var/lib/mediawiki/assets
 curl --fail --location \
-    --output "${MW_UPLOAD_PATH}/assets/favicon.ico" \
+    --output /var/lib/mediawiki/assets/favicon.ico \
     --silent --show-error \
     "${VOCAB_REPO}/refs/heads/main/src/favicon/favicon.ico"
-_favicon='/images/assets/favicon.ico'
+_favicon=/assets/favicon.ico
 sed --regexp-extended --null-data \
     -e"s|(\\\$wgLogos[^;]+;)|\\1\\n\$wgFavicon = \"${_favicon}\";|" \
     -i "${CONF_PATH}/LocalSettings.php"
@@ -104,6 +104,7 @@ unset _wgRightsUrl _wgRightsText _wgRightsIcon
 # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
 bold 'Enable short URL ($wgArticlePath)'
 echo '$wgArticlePath = "/wiki/$1";' >> "${CONF_PATH}/LocalSettings.php"
+echo >> "${CONF_PATH}/LocalSettings.php"
 
 # https://www.mediawiki.org/wiki/Manual:$wgFileExtensions
 bold 'Add file extensions ($wgFileExtensions)'

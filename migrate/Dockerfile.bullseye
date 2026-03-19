@@ -34,17 +34,19 @@ RUN apt-get update \
         libapache2-mod-php \
         mariadb-client \
         mediawiki \
-        php-imagick \
         php \
+        php-apcu \
         php-cli \
         php-common \
         php-curl \
         php-gd \
+        php-imagick \
         php-intl \
         php-mbstring \
         php-mysql \
         php-xml \
         php-zip \
+        rsync \
         sudo \
         unzip \
         vim \

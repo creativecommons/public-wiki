@@ -18,8 +18,16 @@ trap '_es=${?};
     printf " exited with a status of ${_es}\n";
     exit ${_es}' ERR
 
+CACHE_DIR=./cache
+CACHE_IMAGES_DIR="${CACHE_DIR}/images"
+CACHE_SQL="${CACHE_DIR}/legacy_mediawiki_export.sql"
 DIR_MIGRATE="$(cd -P -- "${0%/*}/.." && pwd -P)"
+DOCKER_CACHE_IMAGES_DIR=/var/migration-cache/images
 DOCKER_MW_DIR=/var/lib/mediawiki
+DOCKER_MW_IMAGES_DIR="${DOCKER_MW_DIR}/images"
+DOCKER_SQL="/var/migration-cache/legacy_mediawiki_export.sql"
+# The command_parse() function sets the COMMAND variables:
+COMMAND=''
 # https://en.wikipedia.org/wiki/ANSI_escape_code
 E0="$(printf "\e[0m")"        # reset
 E1="$(printf "\e[1m")"        # bold
@@ -32,30 +40,22 @@ E93="$(printf "\e[93m")"      # foreground: bright yellow
 E97="$(printf "\e[97m")"      # foreground: bright white
 E100="$(printf "\e[100m")"    # background: bright black (gray)
 E107="$(printf "\e[107m")"    # background: bright white
-PROD_SERVER=wiki.default.creativecommons.uk0.bigv.io
-PROD_IMAGES_DIR=/var/www/images/
-PROD_MW_DB=ccwiki
-PROD_MW_HOST=wiki.creativecommons.org
-declare -i RSYNC_PROT_VER_MIN=31
-SCRIPT_NAME="${0##*/}"
-# The script_setup() function sets the following global variables:
-CACHE_SQL=''
-CACHE_DIR=''
-CACHE_IMAGES_DIR=''
-DOCKER_SQL=''
-DOCKER_MW_IMAGES_DIR=''
-# The command_parse() function sets the following global variables:
-COMMAND=''
-# The rsync_version() function sets the following global variables:
-declare -i RSYNC_PROT_VER=0
 NOTICE_CONTAINERS="\
 ⚠️ This script's import command requires the services in
    REPO/migrate/docker-compose.yml, which includes both web-bullseye (MediaWiki
    1.35.13) and web (MediaWiki 1.43.6). Care should be taken as they share the
-   same images Docker volume and database."
+   same database."
 NOTICE_STAFF="\
 ⚠️ This script's pull command can only be run by Creative Commons (CC) team
    members--it requires shell access to the legacy production server."
+PROD_IMAGES_DIR=/var/www/images/
+PROD_MW_DB=ccwiki
+PROD_SERVER=wiki.default.creativecommons.uk0.bigv.io
+# The rsync_version() function sets the RSYNC_PROT_VER global variable:
+declare -i RSYNC_PROT_VER=0
+declare -i RSYNC_PROT_VER_MIN=31
+SCRIPT_NAME="${0##*/}"
+
 
 #### FUNCTIONS ################################################################
 
@@ -167,20 +167,6 @@ database_maintenance(){
 }
 
 
-delete_mediawiki_images() {
-    local _count
-    print_header 'Delete MediaWiki images from container'
-    print_var DOCKER_MW_IMAGES_DIR
-    echo -n 'Delete contents of images directory:'
-    echo " ${DOCKER_MW_IMAGES_DIR}/*"
-    # (xargs is used to trim whitespace)
-    _count=$(docker compose exec --user root web \
-        sh -c "rm -frv ${DOCKER_MW_IMAGES_DIR}/* | wc -l | xargs")
-    success "Directories/files removed: ${_count}"
-    echo
-}
-
-
 error_exit() {
     # Echo error message and exit with error
     echo -e "${E31}ERROR:${E0} ${*}" 1>&2
@@ -199,10 +185,23 @@ import_database() {
 
 import_images() {
     print_header 'Import images into container'
-    print_var CACHE_IMAGES_DIR
-    print_var DOCKER_MW_IMAGES_DIR
-    echo 'Copy cache images to docker temp images dir'
-    docker compose cp ./cache/images/. "web:${DOCKER_MW_IMAGES_DIR}/"
+    print_var DOCKER_CACHE_IMAGES_DIR
+    print_var DOCKER_MW_DIR
+    echo 'Rsync cache images MediaWiki images (removes files not in cache)'
+    # The rsync options below are ordered to match `man rsync`
+    docker compose exec --user root web \
+        rsync \
+            --recursive \
+            --links \
+            --delete \
+            --delete-excluded \
+            --partial \
+            --prune-empty-dirs \
+            --times \
+            --stats \
+            --human-readable \
+            "${DOCKER_CACHE_IMAGES_DIR}" \
+            "${DOCKER_MW_DIR}/"
     echo 'Set ownership of entire images dir to www-data:wwww-data'
     docker compose exec --user root web chown -R www-data:www-data \
         "${DOCKER_MW_IMAGES_DIR}"
@@ -387,6 +386,7 @@ pull_database() {
     print_var PROD_SERVER
     print_var PROD_MW_DB
     print_var CACHE_SQL
+    mkdir -p "${CACHE_DIR}"
     # https://mariadb.com/kb/en/mariadb-dump/
     ssh "${PROD_SERVER}" \
         sudo mysqldump --defaults-extra-file=/etc/mysql/debian.cnf \
@@ -408,6 +408,7 @@ pull_images() {
     print_var PROD_SERVER
     print_var PROD_IMAGES_DIR
     print_var CACHE_DIR
+    mkdir -p "${CACHE_DIR}"
     # The rsync options below are ordered to match `man rsync`
     rsync \
         --recursive \
@@ -470,14 +471,6 @@ script_setup() {
         error_exit \
              'GNU sed is required. If on macOS install `gnu-sed` via brew.'
     fi
-
-    CACHE_DIR=./cache
-    mkdir -p "${CACHE_DIR}"
-
-    DOCKER_MW_IMAGES_DIR="${DOCKER_MW_DIR}/images"
-    DOCKER_SQL="/var/migration-cache/${PROD_MW_HOST}_export.sql"
-    CACHE_IMAGES_DIR="${CACHE_DIR}/images"
-    CACHE_SQL="${CACHE_DIR}/${PROD_MW_HOST}_export.sql"
 
     print_var COMMAND
     print_key_val "$(sw_vers --productName) version" \
@@ -583,7 +576,6 @@ case "${COMMAND}" in
         verify_docker_services 'all'
         notice_containers
         danger_confirm
-        delete_mediawiki_images
         import_images
         prep_sql
         import_database

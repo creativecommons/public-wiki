@@ -21,8 +21,11 @@ services:
       # Apache2 web server configuration (read-only)
       - ../config/web-sites-available:/etc/apache2/sites-available:ro
       # MediaWiki volumes
+      - volume-wiki-assets:/var/lib/mediawiki/assets
       - volume-wiki-etc:/etc/mediawiki
       - volume-wiki-images:/var/lib/mediawiki/images
+      # Migration cache (read-only)
+      - ./cache:/var/migration-cache:ro
 
   web-bullseye:
     container_name: web-bullseye
@@ -47,8 +50,8 @@ services:
       # Apache2 web server configuration (read-only)
       - ../config/web-sites-available:/etc/apache2/sites-available:ro
       # MediaWiki volumes
+      - volume-wiki-assets-bullseye:/var/lib/mediawiki/assets
       - volume-wiki-etc-bullseye:/etc/mediawiki
-      - volume-wiki-images:/var/lib/mediawiki/images
       # Migration cache (read-only)
       - ./cache:/var/migration-cache:ro
 
@@ -67,6 +70,8 @@ services:
 
 volumes:
   volume-mysql:
-  volume-wiki-etc:
+  volume-wiki-assets-bullseye:
+  volume-wiki-assets:
   volume-wiki-etc-bullseye:
+  volume-wiki-etc:
   volume-wiki-images:
