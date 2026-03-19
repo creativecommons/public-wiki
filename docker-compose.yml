@@ -32,6 +32,9 @@ services:
       - .env
     restart: on-failure
     volumes:
+      # Configuration (read-only)
+      - ../config/db.cnf:/etc/mysql/conf.d/db.cnf:ro
+      # Data
       - volume-mysql:/var/lib/mysql
 
 volumes:
