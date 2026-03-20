@@ -32,12 +32,13 @@ See [`CONTRIBUTING.md`][org-contrib].
 [org-contrib]: https://github.com/creativecommons/.github/blob/main/CONTRIBUTING.md
 
 
-## Docker containers:
+## Docker containers
 
-The [`docker-compose.yml`](docker-compose.yml) file defines the following containers:
-- **wiki-web** - Public Wiki web server (Apache2/MediaWiki)
-- **wiki-db** - Database server (MariaDB)
-  - **[localhost:8080](http://localhost:8080/)**
+The [`docker-compose.yml`](docker-compose.yml) file defines the following
+containers:
+- **web** - Web server (Apache2/MediaWiki)
+  - **[`localhost:8080`](http://localhost:8080/)**
+- **db** - Database server (MariaDB)
 
 
 ## Setup
