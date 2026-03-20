@@ -206,6 +206,12 @@ append '$wgDisableCounters = true;'
 append '# Extensions'
 bold 'Enable Cite extension'
 append 'wfLoadExtension( "Cite" );'
+bold 'Enable Nuke extension'
+append 'wfLoadExtension( "Nuke" );'
+
+
+bold 'Disable recent changes patrolling'
+append '$wgUseRCPatrol = false;'
 
 
 bold 'MediaWiki installation complete'
