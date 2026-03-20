@@ -204,13 +204,16 @@ append '$wgDisableCounters = true;'
 
 
 append '# Extensions'
+# https://www.mediawiki.org/wiki/Extension:Cite
 bold 'Enable Cite extension'
 append 'wfLoadExtension( "Cite" );'
+# https://www.mediawiki.org/wiki/Extension:Nuke
 bold 'Enable Nuke extension'
 append 'wfLoadExtension( "Nuke" );'
 
 
-bold 'Disable recent changes patrolling'
+#https://www.mediawiki.org/wiki/Manual:$wgUseRCPatrol
+bold 'Disable recent changes patrolling ($wgUseRCPatrol)'
 append '$wgUseRCPatrol = false;'
 
 
