@@ -18,8 +18,16 @@ trap '_es=${?};
     printf " exited with a status of ${_es}\n";
     exit ${_es}' ERR
 
+CACHE_DIR=./cache
+CACHE_IMAGES_DIR="${CACHE_DIR}/images"
+CACHE_SQL="${CACHE_DIR}/legacy_mediawiki_export.sql"
 DIR_MIGRATE="$(cd -P -- "${0%/*}/.." && pwd -P)"
+DOCKER_CACHE_IMAGES_DIR=/var/migration-cache/images
+DOCKER_CACHE_SQL=/var/migration-cache/legacy_mediawiki_export.sql
 DOCKER_MW_DIR=/var/lib/mediawiki
+DOCKER_MW_IMAGES_DIR="${DOCKER_MW_DIR}/images"
+# The command_parse() function sets the COMMAND variables:
+COMMAND=''
 # https://en.wikipedia.org/wiki/ANSI_escape_code
 E0="$(printf "\e[0m")"        # reset
 E1="$(printf "\e[1m")"        # bold
@@ -32,30 +40,22 @@ E93="$(printf "\e[93m")"      # foreground: bright yellow
 E97="$(printf "\e[97m")"      # foreground: bright white
 E100="$(printf "\e[100m")"    # background: bright black (gray)
 E107="$(printf "\e[107m")"    # background: bright white
-PROD_SERVER=wiki.default.creativecommons.uk0.bigv.io
-PROD_IMAGES_DIR=/var/www/images/
-PROD_MW_DB=ccwiki
-PROD_MW_HOST=wiki.creativecommons.org
-declare -i RSYNC_PROT_VER_MIN=31
-SCRIPT_NAME="${0##*/}"
-# The script_setup() function sets the following global variables:
-CACHE_SQL=''
-CACHE_DIR=''
-CACHE_IMAGES_DIR=''
-DOCKER_SQL=''
-DOCKER_MW_IMAGES_DIR=''
-# The command_parse() function sets the following global variables:
-COMMAND=''
-# The rsync_version() function sets the following global variables:
-declare -i RSYNC_PROT_VER=0
 NOTICE_CONTAINERS="\
 ⚠️ This script's import command requires the services in
    REPO/migrate/docker-compose.yml, which includes both web-bullseye (MediaWiki
    1.35.13) and web (MediaWiki 1.43.6). Care should be taken as they share the
-   same images Docker volume and database."
+   same database."
 NOTICE_STAFF="\
 ⚠️ This script's pull command can only be run by Creative Commons (CC) team
    members--it requires shell access to the legacy production server."
+PROD_IMAGES_DIR=/var/www/images/
+PROD_MW_DB=ccwiki
+PROD_SERVER=wiki.default.creativecommons.uk0.bigv.io
+# The rsync_version() function sets the RSYNC_PROT_VER global variable:
+declare -i RSYNC_PROT_VER=0
+declare -i RSYNC_PROT_VER_MIN=31
+SCRIPT_NAME="${0##*/}"
+
 
 #### FUNCTIONS ################################################################
 
@@ -135,7 +135,7 @@ database_maintenance(){
     _note='note     :'
     # Check
     _note_one="${_note} The storage engine for the table doesn't support check"
-    echo "${E1}Checking all databases.${E0} Dicarded notes include:"
+    echo "${E1}Check all databases.${E0} Dicarded notes include:"
     echo "  ${_note_one}"
     docker compose exec db sh -c 'mariadbcheck \
         --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
@@ -146,7 +146,7 @@ database_maintenance(){
     _note_one="${_note_one} analyze instead"
     _note_two="${_note} The storage engine for the table doesn't support"
     _note_two="${_note_two} optimize"
-    echo "${E1}Optimizing all databases.${E0} Dicarded notes include:"
+    echo "${E1}Optimize all databases.${E0} Dicarded notes include:"
     echo "  ${_note_one}"
     echo "  ${_note_two}"
     docker compose exec db sh -c 'mariadbcheck \
@@ -157,7 +157,7 @@ database_maintenance(){
     # Analyize
     _note_one="${_note} The storage engine for the table doesn't support"
     _note_one="${_note_one} analyze"
-    echo "${E1}Analyizing all databases.${E0} Dicarded notes include:"
+    echo "${E1}Analyize all databases.${E0} Dicarded notes include:"
     echo "  ${_note_one}"
     docker compose exec db sh -c 'mariadbcheck \
         --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
@@ -167,16 +167,33 @@ database_maintenance(){
 }
 
 
-delete_mediawiki_images() {
-    local _count
-    print_header 'Delete MediaWiki images from container'
-    print_var DOCKER_MW_IMAGES_DIR
-    echo -n 'Deleting contents of images directory:'
-    echo " ${DOCKER_MW_IMAGES_DIR}/*"
-    # (xargs is used to trim whitespace)
-    _count=$(docker compose exec --user root web \
-        sh -c "rm -frv ${DOCKER_MW_IMAGES_DIR}/* | wc -l | xargs")
-    success "Directories/files removed: ${_count}"
+database_update() {
+    print_header 'Update database'
+
+    # https://www.mediawiki.org/wiki/Manual:Update.php
+    echo 'Update MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
+    mw_run_web_bullseye update.php --quiet --quick 2>&1 \
+        | sed \
+            -e'/cleanupUsersWithNoId.php to fix this situation./d' \
+            -e'/^$/d'
+
+    # https://www.mediawiki.org/wiki/Manual:CleanupUsersWithNoId.php
+    echo 'Clean-up MediaWiki users with no ID on web-bullseye'
+    mw_run_web_bullseye cleanupUsersWithNoId.php --quiet --prefix '*'
+
+    # Unneeded. Probably handled by update
+    ## https://www.mediawiki.org/wiki/Manual:MigrateActors.php
+    #echo 'Migrate actors'
+    #mw_run_web_bullseye migrateActors.php --quiet
+
+    # The above command should be the last one executed on web-bullseye
+    echo -n "${E93}Remove mw_run_web_bullseye() function for remaining"
+    echo " script run${E0}"
+    unset -f mw_run_web_bullseye
+
+    # https://www.mediawiki.org/wiki/Manual:Update.php
+    echo 'Update MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
+    mw_run_web update --quiet --quick
     echo
 }
 
@@ -189,20 +206,40 @@ error_exit() {
 
 
 import_database() {
-    print_header 'Import data into container database'
-    print_var DOCKER_SQL
-    echo 'Importing database dump SQL on web-bullseye'
-    mw_run_web_bullseye sql.php --quiet "${DOCKER_SQL}"
+    print_header 'Import data into database'
+    print_var DOCKER_CACHE_SQL
+    echo 'Import database dump SQL'
+    docker compose exec --env DOCKER_CACHE_SQL="${DOCKER_CACHE_SQL}" db \
+        sh -c '/usr/bin/mariadb my_wiki --password="${MARIADB_ROOT_PASSWORD}" \
+            < "${DOCKER_CACHE_SQL}"'
     echo
+    #echo 'Restoring new admin password'
+    #docker compose exec web-bullseye sh -c '/usr/bin/php \
+    #    /usr/share/mediawiki/maintenance/changePassword.php \
+    #        --user admin --password "${MW_ADMIN_PASS}"'
+    #echo
 }
 
 
 import_images() {
     print_header 'Import images into container'
-    print_var CACHE_IMAGES_DIR
-    print_var DOCKER_MW_IMAGES_DIR
-    echo 'Copy cache images to docker temp images dir'
-    docker compose cp ./cache/images/. "web:${DOCKER_MW_IMAGES_DIR}/"
+    print_var DOCKER_CACHE_IMAGES_DIR
+    print_var DOCKER_MW_DIR
+    echo 'Rsync cache images MediaWiki images (removes files not in cache)'
+    # The rsync options below are ordered to match `man rsync`
+    docker compose exec --user root web \
+        rsync \
+            --recursive \
+            --links \
+            --delete \
+            --delete-excluded \
+            --partial \
+            --prune-empty-dirs \
+            --times \
+            --stats \
+            --human-readable \
+            "${DOCKER_CACHE_IMAGES_DIR}" \
+            "${DOCKER_MW_DIR}/"
     echo 'Set ownership of entire images dir to www-data:wwww-data'
     docker compose exec --user root web chown -R www-data:www-data \
         "${DOCKER_MW_IMAGES_DIR}"
@@ -210,68 +247,77 @@ import_images() {
 }
 
 
-migrate_database() {
-    print_header 'Migrate container database'
-    # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Migrating MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
-    mw_run_web_bullseye update.php --quiet --quick 2>&1 \
-        | sed \
-            -e'/cleanupUsersWithNoId.php to fix this situation./d' \
-            -e'/^$/d'
-    # https://www.mediawiki.org/wiki/Manual:CleanupUsersWithNoId.php
-    echo 'Clean-up MediaWiki users with no ID on web-bullseye'
-    mw_run_web_bullseye cleanupUsersWithNoId.php --quiet --prefix '*'
-    # The above command should be the last one executed on web-bullseye
-    echo -n "${E93}Removing mw_run_web_bullseye() function for remaining"
-    echo " script run${E0}"
-    unset -f mw_run_web_bullseye
-    # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Migrating MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
-    mw_run_web update --quiet --quick
-    echo
-}
-
-
 mw_maintenance_accounts() {
     print_header 'MediaWiki account maintenance'
     # https://www.mediawiki.org/wiki/Manual:RemoveUnusedAccounts.php
-    echo 'Removing unused accounts'
+    echo 'Remove unused accounts'
     mw_run_web removeUnusedAccounts --quiet --delete --ignore-touched 0
     echo
 }
 
 
-## Unneeded as we are using database dump
-#mw_maintenance_images() {
-#    local _dir
-#    print_header 'MediaWiki image maintenance'
-#    print_var DOCKER_MW_IMAGES_DIR
-#    # https://www.mediawiki.org/wiki/Manual:ImportImages.php
-#    for _dir in {0..9} {a..f}
-#    do
-#        echo "Import images: ${DOCKER_MW_IMAGES_DIR}/${_dir}"
-#        mw_run_web importImages --search-recursively --dry \
-#            "${DOCKER_MW_IMAGES_DIR}/${_dir}" 2>&1 \
-#            | grep -v 'exists, skipping$'
-#    done
-#    echo
-#}
+mw_maintenance_images() {
+    local _dir
+    print_header 'MediaWiki image maintenance'
+    print_var DOCKER_MW_IMAGES_DIR
+
+    # Unneeded as we are using a database dump (already includes image info)
+    ## https://www.mediawiki.org/wiki/Manual:ImportImages.php
+    #for _dir in {0..9} {a..f}
+    #do
+    #    echo "Import images: ${DOCKER_MW_IMAGES_DIR}/${_dir}"
+    #    mw_run_web importImages --search-recursively --dry \
+    #        "${DOCKER_MW_IMAGES_DIR}/${_dir}" 2>&1 \
+    #        | grep -v 'exists, skipping$'
+    #done
+    ## https://www.mediawiki.org/wiki/Manual:RebuildImages.php
+    #echo 'Rebuild images'
+    #mw_run_web rebuildImages
+
+    # Useless? Provides data that is unactionable.
+    ## https://www.mediawiki.org/wiki/Manual:CheckImages.php
+    #echo 'Check (verify) images'
+    #mw_run_web checkImages
+
+    # Useless? Provides data that is unactionable.
+    ## https://www.mediawiki.org/wiki/Manual:FindMissingFiles.php
+    #echo 'Find missing files'
+    #mw_run_web findMissingFiles
+
+    # https://www.mediawiki.org/wiki/Manual:RefreshImageMetadata.php
+    echo 'Refresh image metadata'
+    mw_run_web refreshImageMetadata --quiet
+
+    # https://www.mediawiki.org/wiki/Manual:RefreshFileHeaders.php
+    echo 'Refresh file headers'
+    mw_run_web refreshFileHeaders --quiet
+
+    # https://www.mediawiki.org/wiki/Manual:CleanupUploadStash.php
+    echo 'Clean-up upload stash'
+    mw_run_web cleanupUploadStash --quiet
+
+    echo
+}
 
 
 mw_maintenance_rebuild() {
     print_header 'MediaWiki rebuild maintenance'
     # Note: rebuildall.php is not used because individual scripts allow more
     # user feedback (more echo statements)
+
     # https://www.mediawiki.org/wiki/Manual:Rebuildtextindex.php
     echo 'Rebuild text index (rebuild the searchindex table)'
     mw_run_web rebuildtextindex --quiet
+
     # https://www.mediawiki.org/wiki/Manual:Rebuildrecentchanges.php
     echo 'Rebuild recent changes'
     mw_run_web rebuildrecentchanges --quiet
+
     # https://www.mediawiki.org/wiki/Manual:RefreshLinks.php
     echo -n 'Refresh links (refill pagelinks, categorylinks, and imagelinks'
     echo ' tables)'
     mw_run_web refreshLinks --quiet
+
     echo
 }
 
@@ -279,7 +325,7 @@ mw_maintenance_rebuild() {
 mw_maintenance_titles() {
     print_header 'MediaWiki titles maintenance'
     # https://www.mediawiki.org/wiki/Manual:cleanupTitles.php
-    echo 'Cleaning up page titles'
+    echo 'Clean-up page titles'
     mw_run_web cleanupTitles --quiet
     echo
 }
@@ -356,6 +402,7 @@ pull_database() {
     print_var PROD_SERVER
     print_var PROD_MW_DB
     print_var CACHE_SQL
+    mkdir -p "${CACHE_DIR}"
     # https://mariadb.com/kb/en/mariadb-dump/
     ssh "${PROD_SERVER}" \
         sudo mysqldump --defaults-extra-file=/etc/mysql/debian.cnf \
@@ -364,7 +411,7 @@ pull_database() {
         > "${CACHE_SQL}.tmp"
     mv "${CACHE_SQL}.tmp" "${CACHE_SQL}"
     du -sh "${CACHE_SQL}"
-    echo 'Backing up database export and compressing it'
+    echo 'Back up database export and compress it'
     gzip --force --keep "${CACHE_SQL}"
     du -sh "${CACHE_SQL}.gz"
     echo
@@ -377,6 +424,7 @@ pull_images() {
     print_var PROD_SERVER
     print_var PROD_IMAGES_DIR
     print_var CACHE_DIR
+    mkdir -p "${CACHE_DIR}"
     # The rsync options below are ordered to match `man rsync`
     rsync \
         --recursive \
@@ -439,14 +487,6 @@ script_setup() {
         error_exit \
              'GNU sed is required. If on macOS install `gnu-sed` via brew.'
     fi
-
-    CACHE_DIR=./cache
-    mkdir -p "${CACHE_DIR}"
-
-    DOCKER_MW_IMAGES_DIR="${DOCKER_MW_DIR}/images"
-    DOCKER_SQL="/var/migration-cache/${PROD_MW_HOST}_export.sql"
-    CACHE_IMAGES_DIR="${CACHE_DIR}/images"
-    CACHE_SQL="${CACHE_DIR}/${PROD_MW_HOST}_export.sql"
 
     print_var COMMAND
     print_key_val "$(sw_vers --productName) version" \
@@ -552,13 +592,12 @@ case "${COMMAND}" in
         verify_docker_services 'all'
         notice_containers
         danger_confirm
-        delete_mediawiki_images
         import_images
         prep_sql
         import_database
-        migrate_database
+        database_update
         mw_maintenance_accounts
-        #mw_maintenance_images  # unneeded with database dump
+        mw_maintenance_images
         mw_maintenance_titles
         mw_maintenance_rebuild
         database_maintenance

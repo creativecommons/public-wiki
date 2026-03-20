@@ -9,23 +9,6 @@ E31="$(printf "\e[31m")"      # foreground: red
 E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E94="$(printf "\e[94m")"      # foreground: bright blue
 E97="$(printf "\e[97m")"      # foreground: bright white
-FILE_EXTENSIONS=(
-    doc
-    docx
-    indd
-    m4v
-    odp
-    ods
-    odt
-    ogg
-    pdf
-    psd
-    svg
-    txt
-    xcf
-    xls
-    zip
-)
 REQUIRED_VARIABLES=(
     MARIADB_DATABASE
     MARIADB_ROOT_PASSWORD
@@ -57,11 +40,9 @@ echo "${E90}All required environment variables are present${E90}"
 if [[ "${MW_SERVER_URL}" == 'http://localhost:8081' ]]
 then
     CONTAINER='web-bullseye'
-    MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/install.php'
     APACHECTL='/usr/sbin/apache2ctl'
 else
     CONTAINER='web'
-    MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/run.php install'
     APACHECTL='/sbin/apache2ctl'
 fi
 
@@ -75,47 +56,26 @@ done
 echo 'Database is up!'
 
 
-# Install MediaWiki, if necessary
+# Install and configure MediaWiki, if necessary
 if [[ ! -f "${CONF_PATH}/LocalSettings.php" ]]
 then
-    echo 'Beginning MediaWiki installation'
-    ${MW_INSTALL} \
-        --confpath="${CONF_PATH}" \
-        --dbname="${MARIADB_DATABASE}" \
-        --dbpass="${MARIADB_ROOT_PASSWORD}" \
-        --dbserver="${MW_DB_HOST}:${MW_DB_PORT}" \
-        --dbuser="${MARIADB_USER}" \
-        --pass "${MW_ADMIN_PASS}" \
-        --scriptpath="" \
-        --server="${MW_SERVER_URL}" \
-        "${MW_SITENAME}" "${MW_ADMIN_USER}"
-    # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
-    echo 'Enabling Short URL (wgArticlePath)'
-    # shellcheck disable=SC2016
-    echo '$wgArticlePath = "/wiki/$1";' >> "${CONF_PATH}/LocalSettings.php"
-    # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
-    echo 'Enabling Uploads (wgEnableUploads)'
-    # shellcheck disable=SC2016
-    sed -e's/\$wgEnableUploads = false;/$wgEnableUploads = true;/' -i \
-        "${CONF_PATH}/LocalSettings.php"
-    # https://www.mediawiki.org/wiki/Manual:$wgFileExtensions
-    echo 'Adding file extensions (wgFileExtensions)'
-    for _ext in "${FILE_EXTENSIONS[@]}"
-    do
-        echo -n "  ${_ext}"
-        echo "\$wgFileExtensions[] = '${_ext}';" \
-            >> "${CONF_PATH}/LocalSettings.php"
-    done
-    echo
-
-    echo 'MediaWiki installation complete'
+    if [[ "${CONTAINER}" == 'web' ]]
+    then
+        echo -n 'Waiting 5 seconds so that web-bullseye can complete install'
+        echo ' first'
+        sleep 5
+    fi
+    /usr/local/sbin/configure_mediawiki.sh
 else
     echo "${E90}Skipping MediaWiki installation (config present)${E0}"
 fi
 
-
 if [[ "${CONTAINER}" == 'web' ]]
 then
+    # Prepare for MediaWiki file cache
+    mkdir -p /tmp/mediawiki_file_cache
+    chown www-data:www-data /tmp/mediawiki_file_cache
+
     "${APACHECTL}" -v
     echo "${E97}Starting apache2 webserver: ${E94}${MW_SERVER_URL}/${E0}"
     "${APACHECTL}" -D FOREGROUND -k start
