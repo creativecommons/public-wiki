@@ -35,6 +35,7 @@ E30="$(printf "\e[30m")"      # foreground: black
 E31="$(printf "\e[31m")"      # foreground: red
 E33="$(printf "\e[33m")"      # foreground: yellow
 E43="$(printf "\e[43m")"      # foreground: yellow
+E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E92="$(printf "\e[92m")"      # foreground: bright green
 E93="$(printf "\e[93m")"      # foreground: bright yellow
 E97="$(printf "\e[97m")"      # foreground: bright white
@@ -213,11 +214,6 @@ import_database() {
         sh -c '/usr/bin/mariadb my_wiki --password="${MARIADB_ROOT_PASSWORD}" \
             < "${DOCKER_CACHE_SQL}"'
     echo
-    #echo 'Restoring new admin password'
-    #docker compose exec web-bullseye sh -c '/usr/bin/php \
-    #    /usr/share/mediawiki/maintenance/changePassword.php \
-    #        --user admin --password "${MW_ADMIN_PASS}"'
-    #echo
 }
 
 
@@ -248,10 +244,53 @@ import_images() {
 
 
 mw_maintenance_accounts() {
+    local _group _user
     print_header 'MediaWiki account maintenance'
+
     # https://www.mediawiki.org/wiki/Manual:RemoveUnusedAccounts.php
     echo 'Remove unused accounts'
     mw_run_web removeUnusedAccounts --quiet --delete --ignore-touched 0
+
+    # https://www.mediawiki.org/wiki/Manual:DeleteLocalPasswords.php
+    echo 'Delete local passwords'
+    mw_run_web deleteLocalPasswords --quiet --delete
+
+    # https://www.mediawiki.org/wiki/Manual:EmptyUserGroup.php
+    echo 'Remove all users from legacy groups'
+    for _group in affiliate approved community regional staff
+    do
+        mw_run_web emptyUserGroup "${_group}" 2>&1 \
+            | gsed -e'/^Removing users from /d' \
+                -e"s/^  ...done! R/- ${_group} ${E90}(r/" \
+                -e"s/^  ...nothing to do, /- ${_group} ${E90}(/" \
+                -e"s/\\.\$/)${E0}/"
+    done
+    echo 'Remove all users from privileged groups'
+    for _group in bot bureaucrat sysop
+    do
+        mw_run_web emptyUserGroup "${_group}" 2>&1 \
+            | gsed -e'/^Removing users from /d' \
+                -e"s/^  ...done! R/- ${_group} ${E90}(r/" \
+                -e"s/^  ...nothing to do, /- ${_group} ${E90}(/" \
+                -e"s/\\.\$/)${E0}/"
+    done
+
+    # https://www.mediawiki.org/wiki/Manual:CreateAndPromote.php
+    echo 'Add appropriate and verified users to sysop group'
+    for _user in CCID-marimoreshead CCID-shinchpearson CCID-timidrobot
+    do
+        echo "- ${_user}"
+        mw_run_web createAndPromote "${_user}" \
+            "x${RANDOM}${RANDOM}${RANDOM}${RANDOM}${RANDOM}${RANDOM}" \
+            --sysop --force --quiet
+    done
+    # Remove temporary random passwords, added above
+    mw_run_web deleteLocalPasswords --quiet --delete
+    echo "- WikiSysop ${E90}(and restore password from environment)${E0}"
+    docker compose exec web sh -c '/usr/bin/php \
+        /usr/share/mediawiki/maintenance/run.php createAndPromote \
+            WikiSysop "${MW_ADMIN_PASS}" --sysop --force --quiet'
+
     echo
 }
 
