@@ -24,6 +24,7 @@ FILE_EXTENSIONS=(
     xls
     zip
 )
+LOCAL_SETTINGS="${CONF_PATH}/LocalSettings.php"
 if [[ "${MW_SERVER_URL}" == 'http://localhost:8081' ]]
 then
     MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/install.php'
@@ -32,6 +33,10 @@ else
 fi
 VOCAB_REPO='https://raw.githubusercontent.com/creativecommons/vocabulary'
 
+
+append() {
+    echo "${@}" >> "${LOCAL_SETTINGS}"
+}
 
 bold() {
     printf "${E97}%s${E0}\n" "${@}"
@@ -68,7 +73,7 @@ _logo=/assets/cc.svg
 sed --regexp-extended \
     -e'/^\s+.1x. => "\$wgResourceBasePath/d' \
     -e"s|(^\\s+.icon. => \")\\\$wgResourceBasePath.*$|\\1${_logo}\",|" \
-    -i "${CONF_PATH}/LocalSettings.php"
+    -i "${LOCAL_SETTINGS}"
 unset _logo
 
 # https://www.mediawiki.org/wiki/Manual:$wgFavicon
@@ -89,7 +94,7 @@ bold 'Configure session cache ($wgSessionCacheType)'
 _session_cache='$wgSessionCacheType = CACHE_DB;'
 sed --regexp-extended --null-data \
     -e"s|(\\\$wgMainCacheType[^;]+;)|\\1\\n${_session_cache}|" \
-    -i "${CONF_PATH}/LocalSettings.php"
+    -i "${LOCAL_SETTINGS}"
 unset _session_cache
 
 # https://www.mediawiki.org/wiki/Manual:$wgUseFileCache
@@ -98,13 +103,20 @@ _file_cache='$wgUseFileCache = true;\n$wgFileCacheDirectory ='
 _file_cache="${_file_cache} \"/tmp/mediawiki_file_cache\";"
 sed --regexp-extended --null-data \
     -e"s|(\\\$wgMemCachedServers[^;]+;)|\\1\\n${_file_cache}|" \
-    -i "${CONF_PATH}/LocalSettings.php"
+    -i "${LOCAL_SETTINGS}"
 unset _file_cache
 
 # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
+# https://www.mediawiki.org/wiki/Manual:$wgEnableUploads
 bold 'Enable Uploads ($wgEnableUploads)'
 sed -e's|^\$wgEnableUploads = false;$|$wgEnableUploads = true;|' \
-    -i "${CONF_PATH}/LocalSettings.php"
+    -i "${LOCAL_SETTINGS}"
+for _file in /etc/php/8.4/apache2/php.ini /etc/php/8.4/cli/php.ini
+do
+    sed -e's|^post_max_size = .*$|post_max_size = 20M|' \
+        -e's|upload_max_filesize = .*$|upload_max_filesize = 20M|' \
+        -i "${_file}"
+done
 
 # https://www.mediawiki.org/wiki/Manual:$wgRightsUrl
 # https://www.mediawiki.org/wiki/Manual:$wgRightsText
@@ -117,22 +129,92 @@ sed --regexp-extended \
     -e"s|^(.wgRightsUrl = \")(\";)|\\1${_wgRightsUrl}\\2|" \
     -e"s|^(.wgRightsText = \")(\";)|\\1${_wgRightsText}\\2|" \
     -e"s|^(.wgRightsIcon = \")(\";)|\\1${_wgRightsIcon}\\2|" \
-    -i "${CONF_PATH}/LocalSettings.php"
+    -i "${LOCAL_SETTINGS}"
 unset _wgRightsUrl _wgRightsText _wgRightsIcon
 
 # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
 bold 'Enable short URL ($wgArticlePath)'
-echo '$wgArticlePath = "/wiki/$1";' >> "${CONF_PATH}/LocalSettings.php"
-echo >> "${CONF_PATH}/LocalSettings.php"
+append '# Enable short URL'
+append '$wgArticlePath = "/wiki/$1";'
+append
 
 # https://www.mediawiki.org/wiki/Manual:$wgFileExtensions
 bold 'Add file extensions ($wgFileExtensions)'
+append '# Additional file extensions'
 for _ext in "${FILE_EXTENSIONS[@]}"
 do
+    append "\$wgFileExtensions[] = \"${_ext}\";"
     echo -n "  ${_ext}"
-    echo "\$wgFileExtensions[] = '${_ext}';" \
-        >> "${CONF_PATH}/LocalSettings.php"
 done
+append
 echo
+
+
+# https://www.mediawiki.org/wiki/Manual:User_rights
+bold 'Update group permissions / user rights'
+append '# Group permissions / user rights
+
+# Only allow SysOps to create accounts instead of * (all) group
+$wgGroupPermissions["sysop"]["createaccount"] = true;
+$wgGroupPermissions["*"]["createaccount"] = false;
+
+# Move basic permissions to user group from * (all) group
+$_basicPermissions = [
+    "createpage",
+    "createtalk",
+    "edit",
+    "editmyoptions",
+    "editmyprivateinfo",
+    "viewmyprivateinfo",
+];
+foreach ($_basicPermissions as $_permission) {
+  $wgGroupPermissions["user"][$_permission] = true;
+  $wgGroupPermissions["*"][$_permission] = false;
+}
+
+# Remove legacy CC groups
+$_legacyCcGroups = [
+    "affiliate",
+    "approved",
+    "community",
+    "regional",
+    "staff",
+];
+foreach ($_legacyCcGroups as $_group) {
+    unset( $wgGroupPermissions[$_group] );
+    unset( $wgRevokePermissions[$_group] );
+    unset( $wgAddGroups[$_group] );
+    unset( $wgRemoveGroups[$_group] );
+    unset( $wgGroupsAddToSelf[$_group] );
+    unset( $wgGroupsRemoveFromSelf[$_group] );
+}
+'
+
+
+append '# Performance optimizations'
+
+# https://www.mediawiki.org/wiki/Manual:$wgDisableCounters
+bold 'Disable counters (performance, $wgDisableCounters)'
+append '$wgDisableCounters = true;'
+
+# miser mode can't be enabled until scheduling is resolved
+## https://www.mediawiki.org/wiki/Manual:$wgDisableCounters
+#bold 'Disable database-intensive features (performance, $wgMiserMode)'
+#append '$wgMiserMode = true;'
+
+
+append '# Extensions'
+# https://www.mediawiki.org/wiki/Extension:Cite
+bold 'Enable Cite extension'
+append 'wfLoadExtension( "Cite" );'
+# https://www.mediawiki.org/wiki/Extension:Nuke
+bold 'Enable Nuke extension'
+append 'wfLoadExtension( "Nuke" );'
+
+
+#https://www.mediawiki.org/wiki/Manual:$wgUseRCPatrol
+bold 'Disable recent changes patrolling ($wgUseRCPatrol)'
+append '$wgUseRCPatrol = false;'
+
 
 bold 'MediaWiki installation complete'

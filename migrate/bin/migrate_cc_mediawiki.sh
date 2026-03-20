@@ -35,6 +35,7 @@ E30="$(printf "\e[30m")"      # foreground: black
 E31="$(printf "\e[31m")"      # foreground: red
 E33="$(printf "\e[33m")"      # foreground: yellow
 E43="$(printf "\e[43m")"      # foreground: yellow
+E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E92="$(printf "\e[92m")"      # foreground: bright green
 E93="$(printf "\e[93m")"      # foreground: bright yellow
 E97="$(printf "\e[97m")"      # foreground: bright white
@@ -56,9 +57,7 @@ declare -i RSYNC_PROT_VER=0
 declare -i RSYNC_PROT_VER_MIN=31
 SCRIPT_NAME="${0##*/}"
 
-
 #### FUNCTIONS ################################################################
-
 
 command_help() {
     print_header 'Usage'
@@ -135,8 +134,8 @@ database_maintenance(){
     _note='note     :'
     # Check
     _note_one="${_note} The storage engine for the table doesn't support check"
-    echo "${E1}Check all databases.${E0} Dicarded notes include:"
-    echo "  ${_note_one}"
+    echo "Check all databases. ${E90}Dicarded notes include:${E0}"
+    echo "  ${E90}${_note_one}${E0}"
     docker compose exec db sh -c 'mariadbcheck \
         --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
         --check' 2>&1 | gsed --regexp-extended --null-data \
@@ -146,9 +145,9 @@ database_maintenance(){
     _note_one="${_note_one} analyze instead"
     _note_two="${_note} The storage engine for the table doesn't support"
     _note_two="${_note_two} optimize"
-    echo "${E1}Optimize all databases.${E0} Dicarded notes include:"
-    echo "  ${_note_one}"
-    echo "  ${_note_two}"
+    echo "${E1}Optimize all databases. ${E90}Dicarded notes include:${E0}"
+    echo "  ${E90}${_note_one}${E0}"
+    echo "  ${E90}${_note_two}${E0}"
     docker compose exec db sh -c 'mariadbcheck \
         --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
         --optimize' 2>&1 | gsed --regexp-extended --null-data \
@@ -157,8 +156,8 @@ database_maintenance(){
     # Analyize
     _note_one="${_note} The storage engine for the table doesn't support"
     _note_one="${_note_one} analyze"
-    echo "${E1}Analyize all databases.${E0} Dicarded notes include:"
-    echo "  ${_note_one}"
+    echo "${E1}Analyize all databases. ${E90}Dicarded notes include:${E0}"
+    echo "  ${E90}${_note_one}${E0}"
     docker compose exec db sh -c 'mariadbcheck \
         --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
         --analyze' 2>&1 | gsed --regexp-extended --null-data \
@@ -167,11 +166,13 @@ database_maintenance(){
 }
 
 
-database_update() {
-    print_header 'Update database'
+database_update_phase1() {
+    print_header 'Update database - phase 1'
+    print_key_val 'Container context' 'web-bullseye'
 
     # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Update MediaWiki from 1.30.0 (Bytemark) to 1.35.13 (web-bullseye)'
+    echo -n "Update to MediaWiki 1.35.13 (web-bullseye) ${E90}from MediaWiki"
+    echo " 1.30.0 (Bytemark)${E0}"
     mw_run_web_bullseye update.php --quiet --quick 2>&1 \
         | sed \
             -e'/cleanupUsersWithNoId.php to fix this situation./d' \
@@ -191,11 +192,22 @@ database_update() {
     echo " script run${E0}"
     unset -f mw_run_web_bullseye
 
-    # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo 'Update MediaWiki from 1.35.13 (web-bullseye) to 1.43.6 (web)'
-    mw_run_web update --quiet --quick
     echo
 }
+
+
+database_update_phase2() {
+    print_header 'Update database - phase 2'
+    print_key_val 'Container context' 'web'
+
+    # https://www.mediawiki.org/wiki/Manual:Update.php
+    echo -n "Update to MediaWiki to 1.43.6 (web) ${E90}from MediaWiki 1.35.13"
+    echo " (web-bullseye)${E0}"
+    mw_run_web update --quiet --quick
+
+    echo
+}
+
 
 
 error_exit() {
@@ -206,23 +218,20 @@ error_exit() {
 
 
 import_database() {
-    print_header 'Import data into database'
+    print_header 'Import prepared MediaWiki SQL dump'
+    print_key_val 'Container context' 'db'
     print_var DOCKER_CACHE_SQL
     echo 'Import database dump SQL'
     docker compose exec --env DOCKER_CACHE_SQL="${DOCKER_CACHE_SQL}" db \
         sh -c '/usr/bin/mariadb my_wiki --password="${MARIADB_ROOT_PASSWORD}" \
             < "${DOCKER_CACHE_SQL}"'
     echo
-    #echo 'Restoring new admin password'
-    #docker compose exec web-bullseye sh -c '/usr/bin/php \
-    #    /usr/share/mediawiki/maintenance/changePassword.php \
-    #        --user admin --password "${MW_ADMIN_PASS}"'
-    #echo
 }
 
 
 import_images() {
-    print_header 'Import images into container'
+    print_header 'Import images (pulled from Bytemark)'
+    print_key_val 'Container context' 'web'
     print_var DOCKER_CACHE_IMAGES_DIR
     print_var DOCKER_MW_DIR
     echo 'Rsync cache images MediaWiki images (removes files not in cache)'
@@ -248,10 +257,56 @@ import_images() {
 
 
 mw_maintenance_accounts() {
+    local _group _user
     print_header 'MediaWiki account maintenance'
+
     # https://www.mediawiki.org/wiki/Manual:RemoveUnusedAccounts.php
     echo 'Remove unused accounts'
-    mw_run_web removeUnusedAccounts --quiet --delete --ignore-touched 0
+    mw_run_web removeUnusedAccounts --delete --ignore-touched 0 2>&1 \
+        | grep '^\.\.\.found.*[0-9]\.$' | gsed \
+            -e"s/^\\.\\.\\.found/${E90}- deleted/" \
+            -e"s/\\.$/ unused accounts${E0}/"
+
+    # https://www.mediawiki.org/wiki/Manual:DeleteLocalPasswords.php
+    echo 'Delete local passwords'
+    mw_run_web deleteLocalPasswords --quiet --delete
+
+    # https://www.mediawiki.org/wiki/Manual:EmptyUserGroup.php
+    echo 'Remove all users from legacy groups'
+    for _group in affiliate approved community regional staff
+    do
+        mw_run_web emptyUserGroup "${_group}" 2>&1 \
+            | gsed -e'/^Removing users from /d' \
+                -e"s/^  ...done! R/- ${_group} ${E90}(r/" \
+                -e"s/^  ...nothing to do, /- ${_group} ${E90}(/" \
+                -e"s/\\.\$/)${E0}/"
+    done
+    echo 'Remove all users from privileged groups'
+    for _group in bot bureaucrat sysop
+    do
+        mw_run_web emptyUserGroup "${_group}" 2>&1 \
+            | gsed -e'/^Removing users from /d' \
+                -e"s/^  ...done! R/- ${_group} ${E90}(r/" \
+                -e"s/^  ...nothing to do, /- ${_group} ${E90}(/" \
+                -e"s/\\.\$/)${E0}/"
+    done
+
+    # https://www.mediawiki.org/wiki/Manual:CreateAndPromote.php
+    echo 'Add appropriate and verified users to sysop group'
+    for _user in CCID-marimoreshead CCID-shinchpearson CCID-timidrobot
+    do
+        echo "- ${_user}"
+        mw_run_web createAndPromote "${_user}" \
+            "x${RANDOM}${RANDOM}${RANDOM}${RANDOM}${RANDOM}${RANDOM}" \
+            --sysop --force --quiet
+    done
+    # Remove temporary random passwords, added above
+    mw_run_web deleteLocalPasswords --quiet --delete
+    echo "- WikiSysop ${E90}(and restore password from environment)${E0}"
+    docker compose exec web sh -c '/usr/bin/php \
+        /usr/share/mediawiki/maintenance/run.php createAndPromote \
+            WikiSysop "${MW_ADMIN_PASS}" --sysop --force --quiet'
+
     echo
 }
 
@@ -363,13 +418,14 @@ notice_containers() {
     echo
 }
 
+
 prep_sql() {
-    print_header 'Prepare MediaWiki SQL'
+    print_header 'Prepare MediaWiki SQL dump (pulled from Bytemark)'
     print_var CACHE_SQL
-    echo '1. Update ENGINE: MyISAM to InnoDB'
-    echo '2. Update CHARSET: latin1 to binary'
+    echo 'Update ENGINE: MyISAM to InnoDB'
+    echo 'Update CHARSET: latin1 to binary'
     # shellcheck disable=SC2016
-    echo '3. Update `searchindex` CHARSET to utf8mb4'
+    echo 'Update `searchindex` CHARSET to utf8mb4'
     # shellcheck disable=SC2016
     gsed --regexp-extended --null-data \
         -e's/ENGINE=MyISAM/ENGINE=InnoDB/g' \
@@ -568,15 +624,22 @@ verify_docker_services() {
     echo
 }
 
-
 #### MAIN #####################################################################
 
 cd "${DIR_MIGRATE}"
 command_parse "${@:-}"
 case "${COMMAND}" in
-    # the following are sorted by order of operations then lexicographically
+    # the following are sorted by order of operations
     'help')
         command_help
+        ;;
+
+    'test')
+        script_setup
+        verify_docker_services 'all'
+        notice_staff_only
+        notice_containers
+        test_ssh_to_prod
         ;;
 
     'pull')
@@ -595,19 +658,12 @@ case "${COMMAND}" in
         import_images
         prep_sql
         import_database
-        database_update
+        database_update_phase1
+        database_update_phase2
         mw_maintenance_accounts
         mw_maintenance_images
         mw_maintenance_titles
         mw_maintenance_rebuild
         database_maintenance
-        ;;
-
-    'test')
-        script_setup
-        verify_docker_services 'all'
-        notice_staff_only
-        notice_containers
-        test_ssh_to_prod
         ;;
 esac
