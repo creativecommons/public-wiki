@@ -8,7 +8,7 @@ _Development_ Creative Commons (CC) Public Wiki
 The aim of the project is to establish a robust and localized development
 environment for MediaWiki using Docker. This repository should represent the
 most advanced and closest implementation of the
-[CC Public Wiki](https://wiki.creativecommons.org)
+[CC Public Wiki](https://wiki.creativecommons.org).
 
 
 ## Code of Conduct
@@ -42,11 +42,12 @@ The [`docker-compose.yml`](docker-compose.yml) file defines the following contai
 
 ## Setup
 
-1. Create the `.env` file:
+1. Create the enviornment `.env` file by copying
+   [`.env.example`](.env.example):
     ```shell
     cp .env.example .env
     ```
-2. Update `.env` to set desired values for MW variables (`MW_VERSION`, `MYSQL_ROOT_PASSWORD`, `MW_SERVER_URL`,`MW_ADMIN_PASS`, etc.)
+2. Update `.env` to ensure all variable have appropriate values.
 3. Build and start Docker:
     ```shell
     docker-compose up
@@ -66,20 +67,31 @@ See [`config/web-sites-available/000-default.conf`][dev-webconfig].
 
 ### MediaWiki configuration
 
-| Name      | Version  |
-| --------- | -------- |
-| MediaWiki | `1.44.2` |
+| Name      | Version  | Notes
+| --------- | -------- | ------------------------------- |
+| MediaWiki | `1.43.6` | Packaged for Debian 13 (trixie) |
 
-Also see [`.env.example`](.env.example).
+Also see:
+- [`.env.example`](.env.example).
+- [`config/configure_mediawiki.sh`](config/configure_mediawiki.sh)
 
 
-## Related Links
+### Migration from legacy server
 
-- [CC Public Wiki](https://wiki.creativecommons.org/)
-- [FrontPage - Debian Wiki](https://wiki.debian.org/FrontPage)
-- [Docker Docs](https://docs.docker.com/)
-- [creativecommons/index-dev-env](https://github.com/creativecommons/index-dev-env): Local development environment for CreativeCommons.org (reference for docker project)
-- [creativecommons/sre-salt-prime](https://github.com/creativecommons/sre-salt-prime): Site Reliability Engineering / DevOps SaltStack configuration files
+- [`migrate/`](migrate/)
+  - [`README.md`](migrate/README.md)
+    - Includes related Debian, Docker, and MediaWiki documentation links
+
+
+### Related development links
+
+- [creativecommons/index-dev-env][index-dev-env]: _Local development
+  environment for CreativeCommons.org (product name: index)_
+- [creativecommons/sre-salt-prime][sre-salt-prime]: _Site Reliability
+  Engineering / DevOps SaltStack configuration files_
+
+[index-dev-env]: https://github.com/creativecommons/index-dev-env
+[sre-salt-prime]: https://github.com/creativecommons/sre-salt-prime
 
 
 ## License
