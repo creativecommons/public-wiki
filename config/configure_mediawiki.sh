@@ -107,9 +107,16 @@ sed --regexp-extended --null-data \
 unset _file_cache
 
 # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
+# https://www.mediawiki.org/wiki/Manual:$wgEnableUploads
 bold 'Enable Uploads ($wgEnableUploads)'
 sed -e's|^\$wgEnableUploads = false;$|$wgEnableUploads = true;|' \
     -i "${LOCAL_SETTINGS}"
+for _file in /etc/php/8.4/apache2/php.ini /etc/php/8.4/cli/php.ini
+do
+    sed -e's|^post_max_size = .*$|post_max_size = 20M|' \
+        -e's|upload_max_filesize = .*$|upload_max_filesize = 20M|' \
+        -i "${_file}"
+done
 
 # https://www.mediawiki.org/wiki/Manual:$wgRightsUrl
 # https://www.mediawiki.org/wiki/Manual:$wgRightsText
