@@ -149,6 +149,7 @@ done
 append
 echo
 
+
 # https://www.mediawiki.org/wiki/Manual:User_rights
 bold 'Update group permissions / user rights'
 append '# Group permissions / user rights
@@ -189,6 +190,7 @@ foreach ($_legacyCcGroups as $_group) {
 }
 '
 
+
 append '# Performance optimizations'
 
 # https://www.mediawiki.org/wiki/Manual:$wgDisableCounters
@@ -199,6 +201,11 @@ append '$wgDisableCounters = true;'
 ## https://www.mediawiki.org/wiki/Manual:$wgDisableCounters
 #bold 'Disable database-intensive features (performance, $wgMiserMode)'
 #append '$wgMiserMode = true;'
+
+
+append '# Extensions'
+bold 'Enable Cite extension'
+append 'wfLoadExtension( "Cite" );'
 
 
 bold 'MediaWiki installation complete'
