@@ -153,7 +153,7 @@ database_maintenance(){
         --optimize' 2>&1 | gsed --regexp-extended --null-data \
             -e"s/[^\n]+\n${_note_one}\n//g" \
             -e"s/[^\n]+\n${_note_two}\n//g"
-    # Analyize
+    # Analyze
     _note_one="${_note} The storage engine for the table doesn't support"
     _note_one="${_note_one} analyze"
     echo "${E1}Analyize all databases. ${E90}Dicarded notes include:${E0}"
