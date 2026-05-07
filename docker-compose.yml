@@ -18,8 +18,6 @@ services:
       - '8080:80'
     restart: on-failure
     volumes:
-      # Apache2 web server configuration (read-only)
-      - ./config/web-sites-available:/etc/apache2/sites-available:ro
       # MediaWiki volumes
       - volume-wiki-assets:/var/lib/mediawiki/assets
       - volume-wiki-etc:/etc/mediawiki

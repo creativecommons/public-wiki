@@ -19,6 +19,7 @@ services:
     restart: on-failure
     volumes:
       # Apache2 web server configuration (read-only)
+      # (Supersedes copied file for easier development)
       - ../config/web-sites-available:/etc/apache2/sites-available:ro
       # MediaWiki volumes
       - volume-wiki-assets:/var/lib/mediawiki/assets

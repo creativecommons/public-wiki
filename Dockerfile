@@ -54,16 +54,15 @@ RUN apt-get update \
     && rm --recursive --force /var/lib/apt/lists/* \
     && update-ca-certificates
 
-# Add MediaWiki configuration script
-COPY config/configure_mediawiki.sh /usr/local/sbin/configure_mediawiki.sh
-RUN chmod +x /usr/local/sbin/configure_mediawiki.sh
+# Add Apache2 virtualhost configuration
+COPY config/web-sites-available /etc/apache2/sites-available/
 
 # Add Apache2's www-data user to sudo group and enable passwordless startup
 RUN adduser www-data sudo
-COPY config/www-data_startupservice /etc/sudoers.d/www-data_startupservice
+COPY config/www-data_startupservice /etc/sudoers.d/
 
 # Add Apache2 service startup script
-COPY config/startupservice.sh /usr/local/sbin/startupservice.sh
+COPY config/startupservice.sh /usr/local/sbin/
 RUN chmod +x /usr/local/sbin/startupservice.sh
 CMD ["sudo", "--preserve-env", "/usr/local/sbin/startupservice.sh"]
 
@@ -71,6 +70,10 @@ CMD ["sudo", "--preserve-env", "/usr/local/sbin/startupservice.sh"]
 RUN a2enmod headers \
   && a2enmod php8.4 \
   && a2enmod rewrite
+
+# Add MediaWiki configuration script
+COPY config/configure_mediawiki.sh /usr/local/sbin/
+RUN chmod +x /usr/local/sbin/configure_mediawiki.sh
 
 # Configure PHP - NOTE: PHP version
 COPY config/90-local.ini /etc/php/8.4/apache2/conf.d/
