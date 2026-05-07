@@ -17,6 +17,10 @@ services:
     ports:
       - '8080:80'
     restart: on-failure
+    security_opt:
+      # For compatibility with Northflank
+      # (Even though this configuration is dev-only this reduces deltas)
+      - no-new-privileges:true
     volumes:
       # Apache2 web server configuration (read-only)
       # (Supersedes copied file for easier development)
@@ -36,7 +40,7 @@ services:
       args:
         MW_SERVER_URL: 'http://localhost:8081'
       context: ../
-      dockerfile: migrate/Dockerfile.bullseye
+      dockerfile: legacy-migrate/Dockerfile.bullseye
     environment:
       MW_SERVER_URL: 'http://localhost:8081'
     links:
@@ -47,6 +51,10 @@ services:
     ports:
       - '8081:80'
     restart: on-failure
+    security_opt:
+      # For compatibility with Northflank
+      # (Even though this configuration is dev-only this reduces deltas)
+      - no-new-privileges:true
     volumes:
       # Apache2 web server configuration (read-only)
       - ../config/web-sites-available:/etc/apache2/sites-available:ro
