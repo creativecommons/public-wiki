@@ -40,10 +40,8 @@ echo "${E90}All required environment variables are present${E90}"
 if [[ "${MW_SERVER_URL}" == 'http://localhost:8081' ]]
 then
     CONTAINER='web-bullseye'
-    APACHECTL='/usr/sbin/apache2ctl'
 else
     CONTAINER='web'
-    APACHECTL='/sbin/apache2ctl'
 fi
 
 
@@ -76,9 +74,9 @@ then
     mkdir -p /tmp/mediawiki_file_cache
     chown www-data:www-data /tmp/mediawiki_file_cache
 
-    "${APACHECTL}" -v
+    /sbin/apache2ctl -v
     echo "${E97}Starting apache2 webserver: ${E94}${MW_SERVER_URL}/${E0}"
-    "${APACHECTL}" -D FOREGROUND -k start
+    /sbin/apache2ctl -D FOREGROUND -k start
 else
     echo "${E97}Sleeping 😴${E0}"
     while true; do sleep 5 || break; done

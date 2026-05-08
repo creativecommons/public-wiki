@@ -47,7 +47,6 @@ RUN apt-get update \
         php-xml \
         php-zip \
         rsync \
-        sudo \
         unzip \
         vim \
     && apt-get clean \
@@ -57,14 +56,10 @@ RUN apt-get update \
 # Add Apache2 virtualhost configuration
 COPY config/web-sites-available /etc/apache2/sites-available/
 
-# Add Apache2's www-data user to sudo group and enable passwordless startup
-RUN adduser www-data sudo
-COPY config/www-data_startupservice /etc/sudoers.d/
-
-# Add Apache2 service startup script
+# Add housekeeping + Apache2 service startup script
 COPY config/startupservice.sh /usr/local/sbin/
 RUN chmod +x /usr/local/sbin/startupservice.sh
-CMD ["sudo", "--preserve-env", "/usr/local/sbin/startupservice.sh"]
+CMD ["/usr/local/sbin/startupservice.sh"]
 
 # Enable Apache modules - NOTE: PHP version
 RUN a2enmod headers \
@@ -81,5 +76,4 @@ COPY config/90-local.ini /etc/php/8.4/apache2/conf.d/
 # Expose ports for Apache
 EXPOSE 80
 
-USER www-data
 WORKDIR /var/lib/mediawiki

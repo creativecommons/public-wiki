@@ -43,9 +43,9 @@ E100="$(printf "\e[100m")"    # background: bright black (gray)
 E107="$(printf "\e[107m")"    # background: bright white
 NOTICE_CONTAINERS="\
 ⚠️ This script's import command requires the services in
-   REPO/migrate/docker-compose.yml, which includes both web-bullseye (MediaWiki
-   1.35.13) and web (MediaWiki 1.43.6). Care should be taken as they share the
-   same database."
+   REPO/legacy-migrate/docker-compose.yml, which includes both web-bullseye
+   (MediaWiki 1.35.13) and web (MediaWiki 1.43.6). Care should be taken as they
+   share the same database."
 NOTICE_STAFF="\
 ⚠️ This script's pull command can only be run by Creative Commons (CC) team
    members--it requires shell access to the legacy production server."
@@ -67,7 +67,7 @@ command_help() {
     # help
     echo 'help        print this help message and exit'
     echo
-    # test
+    # info and tests
     echo 'info        run tests and print setup information'
     echo
     # pull
@@ -94,6 +94,7 @@ command_parse() {
         test) COMMAND='test';;
         pull) COMMAND='pull';;
         import) COMMAND='import';;
+        info) COMMAND='info';;
         *) error_exit "invalid COMMAND: ${1}";;
     esac
 }
@@ -303,7 +304,7 @@ mw_maintenance_accounts() {
     # Remove temporary random passwords, added above
     mw_run_web deleteLocalPasswords --quiet --delete
     echo "- WikiSysop ${E90}(and restore password from environment)${E0}"
-    docker compose exec web sh -c '/usr/bin/php \
+    docker compose exec --user www-data web sh -c '/usr/bin/php \
         /usr/share/mediawiki/maintenance/run.php createAndPromote \
             WikiSysop "${MW_ADMIN_PASS}" --sysop --force --quiet'
 
@@ -391,7 +392,7 @@ mw_run_web() {
     #     Since MediaWiki 1.40, maintenance scripts should be invoked
     #     indirectly through php ./maintenance/run.php. Invoking maintenance
     #     scripts directly will trigger a warning.
-    docker compose exec web /usr/bin/php \
+    docker compose exec --user www-data web /usr/bin/php \
         /usr/share/mediawiki/maintenance/run "${@}"
 }
 
@@ -402,7 +403,7 @@ mw_run_web_bullseye() {
     #     maintenance scripts using php maintenance/scriptName.php instead of
     #     php maintenance/run.php scriptName.
     # shellcheck disable=SC2145
-    docker compose exec web-bullseye /usr/bin/php \
+    docker compose exec --user www-data web-bullseye /usr/bin/php \
         /usr/share/mediawiki/maintenance/"${@}"
 }
 
@@ -530,11 +531,11 @@ script_setup() {
 
     print_header "Setup environment: local docker development"
     # Check execution environment
-    if [[ "${PWD##*/}" != 'migrate' ]]
+    if [[ "${PWD##*/}" != 'legacy-migrate' ]]
     then
         _err='this script must be executed from a clone of the public-wiki'
         _err="${_err} repository (this check requires the current directory"
-        _err="${_err} to me named 'migrate')"
+        _err="${_err} to me named 'legacy-migrate')"
         error_exit "${_err}"
     fi
     if ! command -v gsed >/dev/null
@@ -600,11 +601,11 @@ verify_docker_services() {
     # Ensure web services are running
     for _service in ${_webs}
     do
-        if ! docker compose exec "${_service}" true 2>/dev/null
+        if ! docker compose exec --user www-data "${_service}" true 2>/dev/null
         then
             error_exit "docker service is not running: ${_service}"
         fi
-        if ! docker compose exec "${_service}" \
+        if ! docker compose exec --user www-data "${_service}" \
             test -f /etc/mediawiki/LocalSettings.php
         then
             _msg="${_service}: initial MediaWiki install has not been"
@@ -613,13 +614,16 @@ verify_docker_services() {
         fi
         printf "${E30}${E107}%-24s${E0}\n" " ${_service} container"
         print_key_val 'Debian version' \
-            "$(docker compose exec "${_service}" cat /etc/debian_version)"
+            "$(docker compose exec --user www-data "${_service}" \
+                cat /etc/debian_version)"
         print_key_val 'PHP version' \
-            "$(docker compose exec "${_service}" /usr/bin/php --version \
-                | awk '/^PHP/ {print $2}')"
+            "$(docker compose exec --user www-data "${_service}" \
+                /usr/bin/php --version \
+                    | awk '/^PHP/ {print $2}')"
         print_key_val 'MediaWiki version' \
-            "$(docker compose exec "${_service}" apt-cache show mediawiki \
-                | awk '/^Version:/ {print $2}')"
+            "$(docker compose exec --user www-data "${_service}" \
+                apt-cache show mediawiki \
+                    | awk '/^Version:/ {print $2}')"
     done
     echo
 }
@@ -634,7 +638,7 @@ case "${COMMAND}" in
         command_help
         ;;
 
-    'test')
+    'info')
         script_setup
         verify_docker_services 'all'
         notice_staff_only
