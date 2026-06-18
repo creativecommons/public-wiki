@@ -5,25 +5,15 @@ FROM debian:trixie-slim
 # NOTE: Occurrences of "NOTE: PHP version", below, where a specific PHP version
 #       is required (based on version supported by installed Debian version)
 
-# Configure apt not to prompt during docker build
-# Accept MediaWiki version from docker-compose.yml
-ARG DEBIAN_FRONTEND=noninteractive
-
-# Configure apt to avoid installing recommended and suggested packages
-RUN apt-config dump \
-  | grep --extended-regexp '^APT::Install-(Recommends|Suggests)' \
-  | sed -e 's/1/0/' \
-  | tee /etc/apt/apt.conf.d/99no-recommends-no-suggests
-
 # https://docs.docker.com/build/building/best-practices/#apt-get
 # - Resynchronize the package index, update packages, install packages,
 #   clean-up, and update CA certificates
 # - git is included because MediaWiki says: "Git version control software not
 #   found. [...] Note Special:Version will not display commit hashes."
-RUN apt-get update \
-    && apt-get dist-upgrade --yes --no-install-recommends \
-    && apt-get install --yes --no-install-recommends \
-        adduser \
+RUN apt-get update --no-allow-insecure-repositories \
+    && apt-get dist-upgrade --no-install-recommends --no-install-suggests \
+        --yes \
+    && apt-get install --no-install-recommends --no-install-suggests --yes \
         apache2 \
         apache2-utils \
         ca-certificates \
