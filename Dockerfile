@@ -10,7 +10,7 @@ FROM debian:trixie-slim
 #   clean-up, and update CA certificates
 # - git is included because MediaWiki says: "Git version control software not
 #   found. [...] Note Special:Version will not display commit hashes."
-RUN apt-get update \
+RUN apt-get update --no-allow-insecure-repositories \
     && apt-get dist-upgrade --no-install-recommends --no-install-suggests \
         --yes \
     && apt-get install --no-install-recommends --no-install-suggests --yes \
