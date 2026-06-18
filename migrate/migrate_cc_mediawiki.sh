@@ -20,6 +20,7 @@ trap '_es=${?};
 
 # File-path based variables
 DIR_MIGRATE="$(cd -P -- "${0%/*}" && pwd -P)"
+# shellcheck disable=SC2034
 DIR_REPO="$(cd -P -- "${0%/*}/.." && pwd -P)"
 SCRIPT_NAME="${0##*/}"
 
@@ -196,10 +197,8 @@ database_update_phase1() {
     echo 'Clean-up MediaWiki users with no ID on web-bullseye'
     mw_run_web_bullseye cleanupUsersWithNoId.php --quiet --prefix '*'
 
-    # Unneeded. Probably handled by update
-    ## https://www.mediawiki.org/wiki/Manual:MigrateActors.php
-    #echo 'Migrate actors'
-    #mw_run_web_bullseye migrateActors.php --quiet
+    # https://www.mediawiki.org/wiki/Manual:MigrateActors.php
+    # Proven to be unneeded; probably handled by update
 
     # The above command should be the last one executed on web-bullseye
     echo -n "${E93}Remove mw_run_web_bullseye() function for remaining"
@@ -377,28 +376,14 @@ mw_maintenance_images() {
     print_header 'MediaWiki image maintenance'
     print_var DOCKER_MW_IMAGES_DIR
 
-    # Unneeded as we are using a database dump (already includes image info)
     ## https://www.mediawiki.org/wiki/Manual:ImportImages.php
-    #for _dir in {0..9} {a..f}
-    #do
-    #    echo "Import images: ${DOCKER_MW_IMAGES_DIR}/${_dir}"
-    #    mw_run_web importImages --search-recursively --dry \
-    #        "${DOCKER_MW_IMAGES_DIR}/${_dir}" 2>&1 \
-    #        | grep -v 'exists, skipping$'
-    #done
     ## https://www.mediawiki.org/wiki/Manual:RebuildImages.php
-    #echo 'Rebuild images'
-    #mw_run_web rebuildImages
+    # Unneeded as we are using a database dump (already includes image info)
 
-    # Useless? Provides data that is unactionable.
     ## https://www.mediawiki.org/wiki/Manual:CheckImages.php
-    #echo 'Check (verify) images'
-    #mw_run_web checkImages
 
-    # Useless? Provides data that is unactionable.
     ## https://www.mediawiki.org/wiki/Manual:FindMissingFiles.php
-    #echo 'Find missing files'
-    #mw_run_web findMissingFiles
+    # Useless: provides data that is unactionable.
 
     # https://www.mediawiki.org/wiki/Manual:RefreshImageMetadata.php
     echo 'Refresh image metadata'
