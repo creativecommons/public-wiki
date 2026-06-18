@@ -37,24 +37,26 @@ The following script is used:
    3. Update SQL dump to change `ENGINE` to `InnoDB` for all tables
    4. Update SQL dump to change `CHARSET` to `binary` for all tables
    5. Update SQL dump to change `CHARSET` to `utf8mb4` for `searchindex` table
+   6. Approximate duration: 6 minutes
 4. Import MediaWiki data to local Docker containers and upgrade MediaWiki to
    1.43.8
     ```shell
     ./migrate_cc_mediawiki.sh import
     ```
-    1. Import and upgrade MediaWiki on Docker `web-bullseye`
-       1. Copy `images/` (uploaded files) to Docker volume
-       2. Import database from the SQL file
-       3. Run MediaWiki update to version 1.35.13
-       4. Clean-up MediaWiki users with no ID
-    2. Upgrade MediaWiki on Docker `web` container
-       1. Run MediaWiki update to version 1.43.8
-       2. Clean-up page titles
-       3. Remove unused accounts
-       4. Rebuild all
-          - rebuild text index
-          - rebuild recent changes
-          - refresh links
+   1. Import and upgrade MediaWiki on Docker `web-bullseye`
+      1. Copy `images/` (uploaded files) to Docker volume
+      2. Import database from the SQL file
+      3. Run MediaWiki update to version 1.35.13
+      4. Clean-up MediaWiki users with no ID
+   2. Upgrade MediaWiki on Docker `web` container
+      1. Run MediaWiki update to version 1.43.8
+      2. Clean-up page titles
+      3. Remove unused accounts
+      4. Rebuild all
+         - rebuild text index
+         - rebuild recent changes
+         - refresh links
+   3. Approximate duration: 5 minutes
 5. Export MediaWiki data (database SQL and images file) from local Docker
    containers
     ```shell
@@ -63,6 +65,7 @@ The following script is used:
    1. Store data in `cache-docker/`
       1. Copy `images/` (uploaded files) from legacy cache
       2. Dump database to a SQL file
+   2. Approximate duration: 25 seconds
 
 
 ## Related documentation
