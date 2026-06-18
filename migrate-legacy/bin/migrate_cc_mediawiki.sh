@@ -43,7 +43,7 @@ E100="$(printf "\e[100m")"    # background: bright black (gray)
 E107="$(printf "\e[107m")"    # background: bright white
 NOTICE_CONTAINERS="\
 ⚠️ This script's import command requires the services in
-   REPO/legacy-migrate/docker-compose.yml, which includes both web-bullseye
+   REPO/migrate-legacy/docker-compose.yml, which includes both web-bullseye
    (MediaWiki 1.35.13) and web (MediaWiki 1.43.6). Care should be taken as they
    share the same database."
 NOTICE_STAFF="\
@@ -531,11 +531,11 @@ script_setup() {
 
     print_header "Setup environment: local docker development"
     # Check execution environment
-    if [[ "${PWD##*/}" != 'legacy-migrate' ]]
+    if [[ "${PWD##*/}" != 'migrate-legacy' ]]
     then
         _err='this script must be executed from a clone of the public-wiki'
         _err="${_err} repository (this check requires the current directory"
-        _err="${_err} to me named 'legacy-migrate')"
+        _err="${_err} to me named 'migrate-legacy')"
         error_exit "${_err}"
     fi
     if ! command -v gsed >/dev/null

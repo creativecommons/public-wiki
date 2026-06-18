@@ -40,7 +40,7 @@ services:
       args:
         MW_SERVER_URL: 'http://localhost:8081'
       context: ../
-      dockerfile: legacy-migrate/Dockerfile.bullseye
+      dockerfile: migrate-legacy/Dockerfile.bullseye
     environment:
       MW_SERVER_URL: 'http://localhost:8081'
     links:
