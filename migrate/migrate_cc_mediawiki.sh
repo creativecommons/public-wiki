@@ -78,7 +78,7 @@ export      export MediaWiki data (database SQL and images file) from local
 "
 NOTICE_STAFF="\
 ⚠️ This script's pull command can only be run by Creative Commons (CC) team
-   members--it requires shell access to the legacy production server."
+   members--it requires shell access to the Bytemark legacy virtual machine."
 LEGACY_IMAGES_DIR=/var/www/images/
 LEGACY_MW_DB=ccwiki
 LEGACY_SERVER=wiki.default.creativecommons.uk0.bigv.io
@@ -504,6 +504,7 @@ pull_database() {
     print_var LEGACY_SERVER
     print_var LEGACY_MW_DB
     print_var LCACHE_LEGACY_SQL
+    echo
     mkdir -p "${LCACHE_LEGACY_DIR}"
     # https://mariadb.com/kb/en/mariadb-dump/
     ssh "${LEGACY_SERVER}" \
@@ -512,10 +513,11 @@ pull_database() {
             "${LEGACY_MW_DB}" \
         > "${LCACHE_LEGACY_SQL}.tmp"
     mv "${LCACHE_LEGACY_SQL}.tmp" "${LCACHE_LEGACY_SQL}"
-    du -sh "${LCACHE_LEGACY_SQL}"
-    echo 'Back up database export and compress it'
+    echo
+    echo 'Back up database export and compress it (keep uncompressed)'
     gzip --force --keep "${LCACHE_LEGACY_SQL}"
-    du -sh "${LCACHE_LEGACY_SQL}.gz"
+    du -sh "${LCACHE_LEGACY_SQL}" | repo_rel_path
+    du -sh "${LCACHE_LEGACY_SQL}.gz" | repo_rel_path
     echo
 }
 
@@ -545,13 +547,15 @@ pull_images() {
         "${LEGACY_SERVER}:${LEGACY_IMAGES_DIR}" \
         "${LCACHE_LEGACY_IMAGES_DIR}/"
     echo
-    du -sh "${LCACHE_LEGACY_IMAGES_DIR}"
+    du -sh "${LCACHE_LEGACY_IMAGES_DIR}" | repo_rel_path
     echo
 }
+
 
 repo_rel_path() {
     gsed -e"s#${DIR_MIGRATE}#DIR_REPO/migrate#"
 }
+
 
 rsync_version() {
     local _rsync_version
@@ -565,7 +569,7 @@ rsync_version() {
         _err="rsync protocol version ${RSYNC_PROT_VER} is less than"
         _err="${_err} ${RSYNC_PROT_VER_MIN}--please install via"
         _err="${_err} \`brew install rsync\` (you may need to open a"
-        _err="${_err} new terminal to see new the rsync)"
+        _err="${_err} new terminal to see the new rsync version)"
         error_exit "${_err}"
     fi
 }
