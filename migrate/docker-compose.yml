@@ -29,8 +29,9 @@ services:
       - volume-wiki-assets:/var/lib/mediawiki/assets
       - volume-wiki-etc:/etc/mediawiki
       - volume-wiki-images:/var/lib/mediawiki/images
-      # Migration cache (read-only)
-      - ./cache-legacy:/var/migration-cache:ro
+      # Migration caches
+      - ./cache-legacy:/var/cache-legacy:ro
+      - ./cache-docker:/var/cache-docker
 
   web-bullseye:
     container_name: web-bullseye
@@ -61,8 +62,8 @@ services:
       # MediaWiki volumes
       - volume-wiki-assets-bullseye:/var/lib/mediawiki/assets
       - volume-wiki-etc-bullseye:/etc/mediawiki
-      # Migration cache (read-only)
-      - ./cache-legacy:/var/migration-cache:ro
+      # Migration caches (read-only)
+      - ./cache-legacy:/var/cache-legacy:ro
 
   db:
     container_name: db
@@ -77,7 +78,8 @@ services:
       # Data
       - volume-mysql:/var/lib/mysql
       # Migration cache (read-only)
-      - ./cache-legacy:/var/migration-cache:ro
+      - ./cache-legacy:/var/cache-legacy:ro
+      - ./cache-docker:/var/cache-docker
 
 volumes:
   volume-mysql:

@@ -21,11 +21,13 @@ trap '_es=${?};
 DIR_MIGRATE="$(cd -P -- "${0%/*}" && pwd -P)"
 SCRIPT_NAME="${0##*/}"
 
-CACHE_DIR="${DIR_MIGRATE}/cache-legacy"
-CACHE_IMAGES_DIR="${CACHE_DIR}/images"
-CACHE_SQL="${CACHE_DIR}/legacy_mediawiki_export.sql"
-DOCKER_CACHE_IMAGES_DIR=/var/migration-cache/images
-DOCKER_CACHE_SQL=/var/migration-cache/legacy_mediawiki_export.sql
+CACHE_LOCAL_DIR="${DIR_MIGRATE}/cache-legacy"
+CACHE_LOCAL_IMAGES_DIR="${CACHE_LOCAL_DIR}/images"
+CACHE_LOCAL_SQL="${CACHE_LOCAL_DIR}/legacy_mediawiki_export.sql"
+CACHE_DOCKER_IMAGES_DIR=/var/cache-docker/images
+CACHE_DOCKER_SQL=/var/cache-docker/docker_mediawiki_export.sql
+CACHE_LEGACY_IMAGES_DIR=/var/cache-legacy/images
+CACHE_LEGACY_SQL=/var/cache-legacy/legacy_mediawiki_export.sql
 DOCKER_MW_DIR=/var/lib/mediawiki
 DOCKER_MW_IMAGES_DIR="${DOCKER_MW_DIR}/images"
 # The command_parse() function sets the COMMAND variables:
@@ -224,11 +226,11 @@ error_exit() {
 import_database() {
     print_header 'Import prepared MediaWiki SQL dump'
     print_key_val 'Container context' 'db'
-    print_var DOCKER_CACHE_SQL
+    print_var CACHE_LEGACY_SQL
     echo 'Import database dump SQL'
-    docker compose exec --env DOCKER_CACHE_SQL="${DOCKER_CACHE_SQL}" db \
+    docker compose exec --env CACHE_LEGACY_SQL="${CACHE_LEGACY_SQL}" db \
         sh -c '/usr/bin/mariadb my_wiki --password="${MARIADB_ROOT_PASSWORD}" \
-            < "${DOCKER_CACHE_SQL}"'
+            < "${CACHE_LEGACY_SQL}"'
     echo
 }
 
@@ -236,7 +238,7 @@ import_database() {
 import_images() {
     print_header 'Import images (pulled from Bytemark)'
     print_key_val 'Container context' 'web'
-    print_var DOCKER_CACHE_IMAGES_DIR
+    print_var CACHE_LEGACY_IMAGES_DIR
     print_var DOCKER_MW_DIR
     echo 'Rsync cache images MediaWiki images (removes files not in cache)'
     # The rsync options below are ordered to match `man rsync`
@@ -251,7 +253,7 @@ import_images() {
             --times \
             --stats \
             --human-readable \
-            "${DOCKER_CACHE_IMAGES_DIR}" \
+            "${CACHE_LEGACY_IMAGES_DIR}" \
             "${DOCKER_MW_DIR}/"
     echo 'Set ownership of entire images dir to www-data:wwww-data'
     docker compose exec --user root web chown -R www-data:www-data \
@@ -425,7 +427,7 @@ notice_containers() {
 
 prep_sql() {
     print_header 'Prepare MediaWiki SQL dump (pulled from Bytemark)'
-    print_var CACHE_SQL
+    print_var CACHE_LOCAL_SQL
     echo 'Update ENGINE: MyISAM to InnoDB'
     echo 'Update CHARSET: latin1 to binary'
     # shellcheck disable=SC2016
@@ -435,7 +437,7 @@ prep_sql() {
         -e's/ENGINE=MyISAM/ENGINE=InnoDB/g' \
         -e's/CHARSET=latin1/CHARSET=binary/g' \
         -e's/(FULLTEXT KEY `si_text` \(`si_text`\)\n\) ENGINE=)InnoDB( DEFAULT CHARSET=)binary/\1InnoDB\2utf8mb4/' \
-        -i "${CACHE_SQL}"
+        -i "${CACHE_LOCAL_SQL}"
     echo
 }
 
@@ -461,19 +463,19 @@ pull_database() {
     print_header 'Pull MediaWiki database from legacy production server'
     print_var LEGACY_SERVER
     print_var LEGACY_MW_DB
-    print_var CACHE_SQL
-    mkdir -p "${CACHE_DIR}"
+    print_var CACHE_LOCAL_SQL
+    mkdir -p "${CACHE_LOCAL_DIR}"
     # https://mariadb.com/kb/en/mariadb-dump/
     ssh "${LEGACY_SERVER}" \
         sudo mysqldump --defaults-extra-file=/etc/mysql/debian.cnf \
             --no-tablespaces --single-transaction --skip-lock-tables \
             "${LEGACY_MW_DB}" \
-        > "${CACHE_SQL}.tmp"
-    mv "${CACHE_SQL}.tmp" "${CACHE_SQL}"
-    du -sh "${CACHE_SQL}"
+        > "${CACHE_LOCAL_SQL}.tmp"
+    mv "${CACHE_LOCAL_SQL}.tmp" "${CACHE_LOCAL_SQL}"
+    du -sh "${CACHE_LOCAL_SQL}"
     echo 'Back up database export and compress it'
-    gzip --force --keep "${CACHE_SQL}"
-    du -sh "${CACHE_SQL}.gz"
+    gzip --force --keep "${CACHE_LOCAL_SQL}"
+    du -sh "${CACHE_LOCAL_SQL}.gz"
     echo
 }
 
@@ -483,8 +485,8 @@ pull_images() {
     print_header 'Pull MediaWiki images files from legacy production server'
     print_var LEGACY_SERVER
     print_var LEGACY_IMAGES_DIR
-    print_var CACHE_DIR
-    mkdir -p "${CACHE_DIR}"
+    print_var CACHE_LOCAL_DIR
+    mkdir -p "${CACHE_LOCAL_DIR}"
     # The rsync options below are ordered to match `man rsync`
     rsync \
         --recursive \
@@ -500,9 +502,9 @@ pull_images() {
         --stats \
         --human-readable \
         "${LEGACY_SERVER}:${LEGACY_IMAGES_DIR}" \
-        "${CACHE_IMAGES_DIR}/"
+        "${CACHE_LOCAL_IMAGES_DIR}/"
     echo
-    du -sh "${CACHE_IMAGES_DIR}"
+    du -sh "${CACHE_LOCAL_IMAGES_DIR}"
     echo
 }
 
