@@ -19,6 +19,7 @@ trap '_es=${?};
     exit ${_es}' ERR
 
 DIR_MIGRATE="$(cd -P -- "${0%/*}" && pwd -P)"
+SCRIPT_NAME="${0##*/}"
 
 CACHE_DIR="${DIR_MIGRATE}/cache-legacy"
 CACHE_IMAGES_DIR="${CACHE_DIR}/images"
@@ -45,8 +46,26 @@ E107="$(printf "\e[107m")"    # background: bright white
 NOTICE_CONTAINERS="\
 ⚠️ This script's import command requires the services in
    REPO/migrate/docker-compose.yml, which includes both web-bullseye
-   (MediaWiki 1.35.13) and web (MediaWiki 1.43.6). Care should be taken as they
+   (MediaWiki 1.35.13) and web (MediaWiki 1.43.8). Care should be taken as they
    share the same database."
+NOTICE_HELP="
+${SCRIPT_NAME} COMMAND
+
+${E97}Commands${E0}
+
+help        print this help message and exit
+
+info        run tests and print setup information
+
+pull        export MediaWiki data (database SQL and images files) from Bytemark
+            legacy virtual machine
+
+import      import MediaWiki data to local Docker containers and upgrade
+            MediaWiki
+
+export      export MediaWiki data (database SQL and images file) from local
+            Docker containers
+"
 NOTICE_STAFF="\
 ⚠️ This script's pull command can only be run by Creative Commons (CC) team
    members--it requires shell access to the legacy production server."
@@ -56,29 +75,12 @@ LEGACY_SERVER=wiki.default.creativecommons.uk0.bigv.io
 # The rsync_version() function sets the RSYNC_PROT_VER global variable:
 declare -i RSYNC_PROT_VER=0
 declare -i RSYNC_PROT_VER_MIN=31
-SCRIPT_NAME="${0##*/}"
 
 #### FUNCTIONS ################################################################
 
 command_help() {
     print_header 'Usage'
-    echo "${SCRIPT_NAME} COMMAND"
-    echo
-    echo "${E97}Commands${E0}"
-    # help
-    echo 'help        print this help message and exit'
-    echo
-    # info and tests
-    echo 'info        run tests and print setup information'
-    echo
-    # pull
-    echo -n 'pull        pull MediaWiki database and images files from'
-    echo ' production Bytemark'
-    echo '            server'
-    echo
-    # import
-    echo 'import      import MediaWiki database and images files'
-    echo
+    echo "${NOTICE_HELP}"
 }
 
 
@@ -92,10 +94,10 @@ command_parse() {
     fi
     case "${1:-}" in
         -h*|--h*|h*|'-?'|'--?'|'?') COMMAND='help';;
-        test) COMMAND='test';;
         pull) COMMAND='pull';;
         import) COMMAND='import';;
         info) COMMAND='info';;
+        export) COMMAND='export';;
         *) error_exit "invalid COMMAND: ${1}";;
     esac
 }
@@ -203,7 +205,7 @@ database_update_phase2() {
     print_key_val 'Container context' 'web'
 
     # https://www.mediawiki.org/wiki/Manual:Update.php
-    echo -n "Update to MediaWiki to 1.43.6 (web) ${E90}from MediaWiki 1.35.13"
+    echo -n "Update to MediaWiki to 1.43.8 (web) ${E90}from MediaWiki 1.35.13"
     echo " (web-bullseye)${E0}"
     mw_run_web update --quiet --quick
 
@@ -638,7 +640,6 @@ case "${COMMAND}" in
     'help')
         command_help
         ;;
-
     'info')
         script_setup
         verify_docker_services 'all'
@@ -646,7 +647,6 @@ case "${COMMAND}" in
         notice_containers
         test_ssh_to_prod
         ;;
-
     'pull')
         script_setup
         notice_staff_only
@@ -654,7 +654,6 @@ case "${COMMAND}" in
         pull_images
         pull_database
         ;;
-
     'import')
         script_setup
         verify_docker_services 'all'
@@ -670,5 +669,12 @@ case "${COMMAND}" in
         mw_maintenance_titles
         mw_maintenance_rebuild
         database_maintenance
+        ;;
+    'export')
+        script_setup
+        verify_docker_services 'minimal'
+        notice_containers
+        export_images
+        export_sql
         ;;
 esac

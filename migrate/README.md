@@ -3,7 +3,7 @@
 
 ## Overview
 
-The migration process moves MediaWiki hosting from the legacy Bytemark virtual
+The migration process moves MediaWiki hosting from the Bytemark legacy virtual
 machine, to local Docker containers to perform the upgrades, and then up to the
 new production Northflank container.
 
@@ -11,7 +11,7 @@ The following local Docker containers are used:
 1. `db`: MariaDB (latest)
 2. `web-bullseye`: Debian 11 (Bullseye) running MediaWiki 1.35.13
    - [`Dockerfile.bullseye`](`Dockerfile.bullseye`)
-3. `web`: Debian 13 (Trixie) container running MediaWiki 1.43.6
+3. `web`: Debian 13 (Trixie) container running MediaWiki 1.43.8
    - [`Dockerfile`](../Dockerfile)
      - The same `Dockerfile` is also used in production
 
@@ -26,7 +26,8 @@ The following script is used:
     ```shell
     docker compose up
     ```
-3. Export from Bytemark legacy server running MediaWiki 1.30.0
+3. Export MediaWiki data (database SQL and images files) from Bytemark legacy
+   virtual machine running MediaWiki 1.30.0
     ```shell
     ./migrate_cc_mediawiki.sh pull
     ```
@@ -36,7 +37,8 @@ The following script is used:
    3. Update SQL dump to change `ENGINE` to `InnoDB` for all tables
    4. Update SQL dump to change `CHARSET` to `binary` for all tables
    5. Update SQL dump to change `CHARSET` to `utf8mb4` for `searchindex` table
-4. Import and upgrade MediaWiki using Docker containers
+4. Import MediaWiki data to local Docker containers and upgrade MediaWiki to
+   1.43.8
     ```shell
     ./migrate_cc_mediawiki.sh import
     ```
@@ -46,14 +48,15 @@ The following script is used:
        3. Run MediaWiki update to version 1.35.13
        4. Clean-up MediaWiki users with no ID
     2. Upgrade MediaWiki on Docker `web` container
-       1. Run MediaWiki update to version 1.43.6
+       1. Run MediaWiki update to version 1.43.8
        2. Clean-up page titles
        3. Remove unused accounts
        4. Rebuild all
           - rebuild text index
           - rebuild recent changes
           - refresh links
-5. Export from Docker `web` container
+5. Export MediaWiki data (database SQL and images file) from local Docker
+   containers
     ```shell
     ./migrate_cc_mediawiki.sh export
     ```
