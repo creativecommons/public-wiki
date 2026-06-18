@@ -18,16 +18,23 @@ trap '_es=${?};
     printf " exited with a status of ${_es}\n";
     exit ${_es}' ERR
 
+# File-path based variables
 DIR_MIGRATE="$(cd -P -- "${0%/*}" && pwd -P)"
+DIR_REPO="$(cd -P -- "${0%/*}/.." && pwd -P)"
 SCRIPT_NAME="${0##*/}"
 
-CACHE_LOCAL_DIR="${DIR_MIGRATE}/cache-legacy"
-CACHE_LOCAL_IMAGES_DIR="${CACHE_LOCAL_DIR}/images"
-CACHE_LOCAL_SQL="${CACHE_LOCAL_DIR}/legacy_mediawiki_export.sql"
-CACHE_DOCKER_IMAGES_DIR=/var/cache-docker/images
-CACHE_DOCKER_SQL=/var/cache-docker/docker_mediawiki_export.sql
-CACHE_LEGACY_IMAGES_DIR=/var/cache-legacy/images
-CACHE_LEGACY_SQL=/var/cache-legacy/legacy_mediawiki_export.sql
+# Docker cache variables
+DCACHE_DOCKER_SQL=/var/cache-docker/docker_mediawiki_export.sql
+DCACHE_LEGACY_IMAGES_DIR=/var/cache-legacy/images
+DCACHE_LEGACY_SQL=/var/cache-legacy/legacy_mediawiki_export.sql
+
+# Local cache variables
+LCACHE_DOCKER_DIR="${DIR_MIGRATE}/cache-docker"
+LCACHE_DOCKER_SQL="${LCACHE_DOCKER_DIR}/docker_mediawiki_export.sql"
+LCACHE_LEGACY_DIR="${DIR_MIGRATE}/cache-legacy"
+LCACHE_LEGACY_IMAGES_DIR="${LCACHE_LEGACY_DIR}/images"
+LCACHE_LEGACY_SQL="${LCACHE_LEGACY_DIR}/legacy_mediawiki_export.sql"
+
 DOCKER_MW_DIR=/var/lib/mediawiki
 DOCKER_MW_IMAGES_DIR="${DOCKER_MW_DIR}/images"
 # The command_parse() function sets the COMMAND variables:
@@ -47,7 +54,7 @@ E100="$(printf "\e[100m")"    # background: bright black (gray)
 E107="$(printf "\e[107m")"    # background: bright white
 NOTICE_CONTAINERS="\
 ⚠️ This script's import command requires the services in
-   REPO/migrate/docker-compose.yml, which includes both web-bullseye
+   DIR_REPO/migrate/docker-compose.yml, which includes both web-bullseye
    (MediaWiki 1.35.13) and web (MediaWiki 1.43.8). Care should be taken as they
    share the same database."
 NOTICE_HELP="
@@ -175,6 +182,7 @@ database_maintenance(){
 database_update_phase1() {
     print_header 'Update database - phase 1'
     print_key_val 'Container context' 'web-bullseye'
+    echo
 
     # https://www.mediawiki.org/wiki/Manual:Update.php
     echo -n "Update to MediaWiki 1.35.13 (web-bullseye) ${E90}from MediaWiki"
@@ -205,6 +213,7 @@ database_update_phase1() {
 database_update_phase2() {
     print_header 'Update database - phase 2'
     print_key_val 'Container context' 'web'
+    echo
 
     # https://www.mediawiki.org/wiki/Manual:Update.php
     echo -n "Update to MediaWiki to 1.43.8 (web) ${E90}from MediaWiki 1.35.13"
@@ -215,7 +224,6 @@ database_update_phase2() {
 }
 
 
-
 error_exit() {
     # Echo error message and exit with error
     echo -e "${E31}ERROR:${E0} ${*}" 1>&2
@@ -223,14 +231,61 @@ error_exit() {
 }
 
 
+export_images() {
+    print_header 'Export images (copy from legacy cache)'
+    print_var LCACHE_LEGACY_IMAGES_DIR
+    print_var LCACHE_DOCKER_DIR
+    echo
+    echo 'Rsync cache images MediaWiki images (removes files not in cache)'
+    # The rsync options below are ordered to match `man rsync`
+    rsync \
+        --recursive \
+        --links \
+        --delete \
+        --delete-excluded \
+        --partial \
+        --prune-empty-dirs \
+        --times \
+        --stats \
+        --human-readable \
+        "${LCACHE_LEGACY_IMAGES_DIR}" \
+        "${LCACHE_DOCKER_DIR}/"
+    echo
+}
+
+
+export_sql() {
+    # https://www.mediawiki.org/wiki/Manual:Backing_up_a_wiki
+    print_header 'Export MediaWiki database from Docker container'
+    print_key_val 'Container context' 'db'
+    print_var DCACHE_DOCKER_SQL
+    print_var LCACHE_DOCKER_SQL
+    echo
+    mkdir -p "${LCACHE_DOCKER_DIR}"
+    # https://mariadb.com/kb/en/mariadb-dump/
+    # MARIADB_DATABASE variable is set by ../.env
+    docker compose exec --env DCACHE_DOCKER_SQL="${DCACHE_DOCKER_SQL}" db \
+        sh -c '/usr/bin/mariadb-dump --password="${MARIADB_ROOT_PASSWORD}" \
+            --no-tablespaces --single-transaction --skip-lock-tables \
+            "${MARIADB_DATABASE}" > "${DCACHE_DOCKER_SQL}.tmp"'
+    mv "${LCACHE_DOCKER_SQL}.tmp" "${LCACHE_DOCKER_SQL}"
+    du -sh "${LCACHE_DOCKER_SQL}" | repo_rel_path
+    echo
+    echo 'Compress database export'
+    gzip --force "${LCACHE_DOCKER_SQL}"
+    du -sh "${LCACHE_DOCKER_SQL}.gz" | repo_rel_path
+    echo
+}
+
+
 import_database() {
     print_header 'Import prepared MediaWiki SQL dump'
     print_key_val 'Container context' 'db'
-    print_var CACHE_LEGACY_SQL
+    print_var DCACHE_LEGACY_SQL
     echo 'Import database dump SQL'
-    docker compose exec --env CACHE_LEGACY_SQL="${CACHE_LEGACY_SQL}" db \
+    docker compose exec --env DCACHE_LEGACY_SQL="${DCACHE_LEGACY_SQL}" db \
         sh -c '/usr/bin/mariadb my_wiki --password="${MARIADB_ROOT_PASSWORD}" \
-            < "${CACHE_LEGACY_SQL}"'
+            < "${DCACHE_LEGACY_SQL}"'
     echo
 }
 
@@ -238,7 +293,7 @@ import_database() {
 import_images() {
     print_header 'Import images (pulled from Bytemark)'
     print_key_val 'Container context' 'web'
-    print_var CACHE_LEGACY_IMAGES_DIR
+    print_var DCACHE_LEGACY_IMAGES_DIR
     print_var DOCKER_MW_DIR
     echo 'Rsync cache images MediaWiki images (removes files not in cache)'
     # The rsync options below are ordered to match `man rsync`
@@ -253,7 +308,7 @@ import_images() {
             --times \
             --stats \
             --human-readable \
-            "${CACHE_LEGACY_IMAGES_DIR}" \
+            "${DCACHE_LEGACY_IMAGES_DIR}" \
             "${DOCKER_MW_DIR}/"
     echo 'Set ownership of entire images dir to www-data:wwww-data'
     docker compose exec --user root web chown -R www-data:www-data \
@@ -427,7 +482,7 @@ notice_containers() {
 
 prep_sql() {
     print_header 'Prepare MediaWiki SQL dump (pulled from Bytemark)'
-    print_var CACHE_LOCAL_SQL
+    print_var LCACHE_LEGACY_SQL
     echo 'Update ENGINE: MyISAM to InnoDB'
     echo 'Update CHARSET: latin1 to binary'
     # shellcheck disable=SC2016
@@ -437,7 +492,7 @@ prep_sql() {
         -e's/ENGINE=MyISAM/ENGINE=InnoDB/g' \
         -e's/CHARSET=latin1/CHARSET=binary/g' \
         -e's/(FULLTEXT KEY `si_text` \(`si_text`\)\n\) ENGINE=)InnoDB( DEFAULT CHARSET=)binary/\1InnoDB\2utf8mb4/' \
-        -i "${CACHE_LOCAL_SQL}"
+        -i "${LCACHE_LEGACY_SQL}"
     echo
 }
 
@@ -449,7 +504,7 @@ print_header() {
 
 
 print_key_val() {
-    printf "${E97}${E100}%24s${E0} %s\n" "${1}:" "${2}"
+    printf "${E97}${E100}%25s${E0} %s\n" "${1}:" "${2}" | repo_rel_path
 }
 
 
@@ -463,19 +518,19 @@ pull_database() {
     print_header 'Pull MediaWiki database from legacy production server'
     print_var LEGACY_SERVER
     print_var LEGACY_MW_DB
-    print_var CACHE_LOCAL_SQL
-    mkdir -p "${CACHE_LOCAL_DIR}"
+    print_var LCACHE_LEGACY_SQL
+    mkdir -p "${LCACHE_LEGACY_DIR}"
     # https://mariadb.com/kb/en/mariadb-dump/
     ssh "${LEGACY_SERVER}" \
         sudo mysqldump --defaults-extra-file=/etc/mysql/debian.cnf \
             --no-tablespaces --single-transaction --skip-lock-tables \
             "${LEGACY_MW_DB}" \
-        > "${CACHE_LOCAL_SQL}.tmp"
-    mv "${CACHE_LOCAL_SQL}.tmp" "${CACHE_LOCAL_SQL}"
-    du -sh "${CACHE_LOCAL_SQL}"
+        > "${LCACHE_LEGACY_SQL}.tmp"
+    mv "${LCACHE_LEGACY_SQL}.tmp" "${LCACHE_LEGACY_SQL}"
+    du -sh "${LCACHE_LEGACY_SQL}"
     echo 'Back up database export and compress it'
-    gzip --force --keep "${CACHE_LOCAL_SQL}"
-    du -sh "${CACHE_LOCAL_SQL}.gz"
+    gzip --force --keep "${LCACHE_LEGACY_SQL}"
+    du -sh "${LCACHE_LEGACY_SQL}.gz"
     echo
 }
 
@@ -485,8 +540,8 @@ pull_images() {
     print_header 'Pull MediaWiki images files from legacy production server'
     print_var LEGACY_SERVER
     print_var LEGACY_IMAGES_DIR
-    print_var CACHE_LOCAL_DIR
-    mkdir -p "${CACHE_LOCAL_DIR}"
+    print_var LCACHE_LEGACY_DIR
+    mkdir -p "${LCACHE_LEGACY_DIR}"
     # The rsync options below are ordered to match `man rsync`
     rsync \
         --recursive \
@@ -499,15 +554,19 @@ pull_images() {
         --exclude 'CVS' \
         --exclude 'lock_*' \
         --exclude '.htaccess' \
+        --exclude 'temp' \
         --stats \
         --human-readable \
         "${LEGACY_SERVER}:${LEGACY_IMAGES_DIR}" \
-        "${CACHE_LOCAL_IMAGES_DIR}/"
+        "${LCACHE_LEGACY_IMAGES_DIR}/"
     echo
-    du -sh "${CACHE_LOCAL_IMAGES_DIR}"
+    du -sh "${LCACHE_LEGACY_IMAGES_DIR}"
     echo
 }
 
+repo_rel_path() {
+    gsed -e"s#${DIR_MIGRATE}#DIR_REPO/migrate#"
+}
 
 rsync_version() {
     local _rsync_version
@@ -550,12 +609,14 @@ script_setup() {
              'GNU sed is required. If on macOS install `gnu-sed` via brew.'
     fi
 
-    print_var COMMAND
+    print_var DIR_REPO
+    print_var DIR_MIGRATE
     print_key_val "$(sw_vers --productName) version" \
         "$(sw_vers --productVersion)"
     rsync_version
     print_key_val 'Docker version' \
         "$(docker --version | sed -e's/^Docker *version *//')"
+    print_var COMMAND
 
     echo
 }
@@ -596,7 +657,7 @@ verify_docker_services() {
     then
         error_exit 'docker service is not running: db'
     fi
-    printf "${E30}${E107}%-24s${E0}\n" ' db container'
+    printf "${E30}${E107}%-25s${E0}\n" ' db container'
     print_key_val 'Debian version' \
         "$(docker compose exec db cat /etc/debian_version)"
     print_key_val 'MariaDB version' \
@@ -617,7 +678,7 @@ verify_docker_services() {
             _msg="${_msg} completed"
             error_exit "${_msg}"
         fi
-        printf "${E30}${E107}%-24s${E0}\n" " ${_service} container"
+        printf "${E30}${E107}%-25s${E0}\n" " ${_service} container"
         print_key_val 'Debian version' \
             "$(docker compose exec --user www-data "${_service}" \
                 cat /etc/debian_version)"

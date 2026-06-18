@@ -61,7 +61,7 @@ The following script is used:
     ./migrate_cc_mediawiki.sh export
     ```
    1. Store data in `cache-docker/`
-      1. Copy `images/` (uploaded files) from legacy server
+      1. Copy `images/` (uploaded files) from legacy cache
       2. Dump database to a SQL file
 
 
