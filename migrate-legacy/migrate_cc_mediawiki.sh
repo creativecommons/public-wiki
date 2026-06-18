@@ -18,10 +18,11 @@ trap '_es=${?};
     printf " exited with a status of ${_es}\n";
     exit ${_es}' ERR
 
-CACHE_DIR=./cache
+DIR_MIGRATE="$(cd -P -- "${0%/*}" && pwd -P)"
+
+CACHE_DIR="${DIR_MIGRATE}/cache-legacy"
 CACHE_IMAGES_DIR="${CACHE_DIR}/images"
 CACHE_SQL="${CACHE_DIR}/legacy_mediawiki_export.sql"
-DIR_MIGRATE="$(cd -P -- "${0%/*}/.." && pwd -P)"
 DOCKER_CACHE_IMAGES_DIR=/var/migration-cache/images
 DOCKER_CACHE_SQL=/var/migration-cache/legacy_mediawiki_export.sql
 DOCKER_MW_DIR=/var/lib/mediawiki
@@ -49,9 +50,9 @@ NOTICE_CONTAINERS="\
 NOTICE_STAFF="\
 ⚠️ This script's pull command can only be run by Creative Commons (CC) team
    members--it requires shell access to the legacy production server."
-PROD_IMAGES_DIR=/var/www/images/
-PROD_MW_DB=ccwiki
-PROD_SERVER=wiki.default.creativecommons.uk0.bigv.io
+LEGACY_IMAGES_DIR=/var/www/images/
+LEGACY_MW_DB=ccwiki
+LEGACY_SERVER=wiki.default.creativecommons.uk0.bigv.io
 # The rsync_version() function sets the RSYNC_PROT_VER global variable:
 declare -i RSYNC_PROT_VER=0
 declare -i RSYNC_PROT_VER_MIN=31
@@ -456,15 +457,15 @@ print_var() {
 pull_database() {
     # https://www.mediawiki.org/wiki/Manual:Backing_up_a_wiki
     print_header 'Pull MediaWiki database from legacy production server'
-    print_var PROD_SERVER
-    print_var PROD_MW_DB
+    print_var LEGACY_SERVER
+    print_var LEGACY_MW_DB
     print_var CACHE_SQL
     mkdir -p "${CACHE_DIR}"
     # https://mariadb.com/kb/en/mariadb-dump/
-    ssh "${PROD_SERVER}" \
+    ssh "${LEGACY_SERVER}" \
         sudo mysqldump --defaults-extra-file=/etc/mysql/debian.cnf \
             --no-tablespaces --single-transaction --skip-lock-tables \
-            "${PROD_MW_DB}" \
+            "${LEGACY_MW_DB}" \
         > "${CACHE_SQL}.tmp"
     mv "${CACHE_SQL}.tmp" "${CACHE_SQL}"
     du -sh "${CACHE_SQL}"
@@ -478,8 +479,8 @@ pull_database() {
 pull_images() {
     # https://www.mediawiki.org/wiki/Manual:Backing_up_a_wiki
     print_header 'Pull MediaWiki images files from legacy production server'
-    print_var PROD_SERVER
-    print_var PROD_IMAGES_DIR
+    print_var LEGACY_SERVER
+    print_var LEGACY_IMAGES_DIR
     print_var CACHE_DIR
     mkdir -p "${CACHE_DIR}"
     # The rsync options below are ordered to match `man rsync`
@@ -496,7 +497,7 @@ pull_images() {
         --exclude '.htaccess' \
         --stats \
         --human-readable \
-        "${PROD_SERVER}:${PROD_IMAGES_DIR}" \
+        "${LEGACY_SERVER}:${LEGACY_IMAGES_DIR}" \
         "${CACHE_IMAGES_DIR}/"
     echo
     du -sh "${CACHE_IMAGES_DIR}"
@@ -563,8 +564,8 @@ success() {
 
 test_ssh_to_prod() {
     print_header 'Test SSH connection to production server'
-    print_var PROD_SERVER
-    if ! ssh "${PROD_SERVER}" true
+    print_var LEGACY_SERVER
+    if ! ssh "${LEGACY_SERVER}" true
     then
         error_exit 'unable to connect--verify config and public key'
     else
