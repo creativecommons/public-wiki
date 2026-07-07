@@ -30,6 +30,7 @@ jobs:
 
       # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@v4
         with:
           platforms: linux/amd64,linux/arm64
@@ -38,8 +39,11 @@ jobs:
       - name: Build and push Docker images to GHCR
         uses: docker/build-push-action@v7
         with:
+          builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ steps.buildx.outputs.platforms }}
+          provenance: false
           push: true
+          sbom: false
           tags: ghcr.io/${{ github.repository }}:latest
