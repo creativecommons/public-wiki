@@ -1,4 +1,7 @@
 # https://docs.docker.com/engine/reference/builder/
+LABEL org.opencontainers.image.description="CC Public Wiki web container"
+LABEL org.opencontainers.image.licenses=MIT
+LABEL org.opencontainers.image.source=https://github.com/creativecommons/public-wiki
 
 # https://hub.docker.com/_/debian
 FROM debian:trixie-slim
