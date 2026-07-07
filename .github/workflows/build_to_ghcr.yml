@@ -6,8 +6,6 @@ on:
     paths:
       - 'Dockerfile'
       - 'config/**'
-    paths-ignore:
-      - 'config/db.cnf'
 
 jobs:
   build-and-push:
