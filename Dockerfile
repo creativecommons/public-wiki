@@ -13,9 +13,9 @@ FROM debian:trixie-slim
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         --no-allow-insecure-repositories --quiet \
     && DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade \
-        --no-install-recommends --no-install-suggests --yes --quiet \
+        --no-install-recommends --no-install-suggests --quiet --yes \
     && DEBIAN_FRONTEND=noninteractive apt-get install \
-        --no-install-recommends --no-install-suggests --yes --quiet \
+        --no-install-recommends --no-install-suggests --quiet --yes \
         apache2 \
         apache2-utils \
         ca-certificates \
