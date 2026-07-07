@@ -53,4 +53,4 @@ jobs:
           #labels: ${{ steps.meta.outputs.labels }}
           push: true
           #tags: ${{ steps.meta.outputs.tags }}
-          tags: {{ github.repository }}:latest
+          tags: ${{ github.repository }}:latest
