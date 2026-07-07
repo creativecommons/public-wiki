@@ -1,12 +1,13 @@
 # https://docs.docker.com/engine/reference/builder/
-LABEL org.opencontainers.image.description="CC Public Wiki web container"
-LABEL org.opencontainers.image.licenses=MIT
-LABEL org.opencontainers.image.source=https://github.com/creativecommons/public-wiki
 
 # https://hub.docker.com/_/debian
 FROM debian:trixie-slim
 # NOTE: Occurrences of "NOTE: PHP version", below, where a specific PHP version
 #       is required (based on version supported by installed Debian version)
+
+LABEL org.opencontainers.image.description="CC Public Wiki web container"
+LABEL org.opencontainers.image.licenses=MIT
+LABEL org.opencontainers.image.source=https://github.com/creativecommons/public-wiki
 
 # https://docs.docker.com/build/building/best-practices/#apt-get
 # - Resynchronize the package index, update packages, install packages,
