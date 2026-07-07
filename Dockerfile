@@ -11,11 +11,11 @@ FROM debian:trixie-slim
 # - git is included because MediaWiki says: "Git version control software not
 #   found. [...] Note Special:Version will not display commit hashes."
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-        --no-allow-insecure-repositories \
+        --no-allow-insecure-repositories --quiet \
     && DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade \
-        --no-install-recommends --no-install-suggests --yes \
+        --no-install-recommends --no-install-suggests --yes --quiet \
     && DEBIAN_FRONTEND=noninteractive apt-get install \
-        --no-install-recommends --no-install-suggests --yes \
+        --no-install-recommends --no-install-suggests --yes --quiet \
         apache2 \
         apache2-utils \
         ca-certificates \
@@ -41,7 +41,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         rsync \
         unzip \
         vim \
-    && DEBIAN_FRONTEND=noninteractive apt-get clean \
+    && DEBIAN_FRONTEND=noninteractive apt-get clean --quiet \
     && rm --recursive --force /var/lib/apt/lists/* \
     && update-ca-certificates
 
