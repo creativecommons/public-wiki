@@ -10,10 +10,12 @@ FROM debian:trixie-slim
 #   clean-up, and update CA certificates
 # - git is included because MediaWiki says: "Git version control software not
 #   found. [...] Note Special:Version will not display commit hashes."
-RUN apt-get update --no-allow-insecure-repositories \
-    && apt-get dist-upgrade --no-install-recommends --no-install-suggests \
-        --yes \
-    && apt-get install --no-install-recommends --no-install-suggests --yes \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+        --no-allow-insecure-repositories \
+    && DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade \
+        --no-install-recommends --no-install-suggests --yes \
+    && DEBIAN_FRONTEND=noninteractive apt-get install \
+        --no-install-recommends --no-install-suggests --yes \
         apache2 \
         apache2-utils \
         ca-certificates \
@@ -39,7 +41,7 @@ RUN apt-get update --no-allow-insecure-repositories \
         rsync \
         unzip \
         vim \
-    && apt-get clean \
+    && DEBIAN_FRONTEND=noninteractive apt-get clean \
     && rm --recursive --force /var/lib/apt/lists/* \
     && update-ca-certificates
 
@@ -52,9 +54,9 @@ RUN chmod +x /usr/local/sbin/startupservice.sh
 CMD ["/usr/local/sbin/startupservice.sh"]
 
 # Enable Apache modules - NOTE: PHP version
-RUN a2enmod headers \
-  && a2enmod php8.4 \
-  && a2enmod rewrite
+RUN a2enmod --quiet headers \
+  && a2enmod --quiet php8.4 \
+  && a2enmod --quiet rewrite
 
 # Add MediaWiki configuration script
 COPY config/configure_mediawiki.sh /usr/local/sbin/
