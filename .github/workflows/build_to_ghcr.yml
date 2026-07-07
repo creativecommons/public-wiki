@@ -4,8 +4,10 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/build_to_ghcr.yml'
       - 'Dockerfile'
       - 'config/**'
+      - '!config/db.cnf'
 
 jobs:
   build-and-push:
