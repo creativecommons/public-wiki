@@ -37,7 +37,7 @@ LCACHE_LEGACY_IMAGES_DIR="${LCACHE_LEGACY_DIR}/images"
 LCACHE_LEGACY_SQL="${LCACHE_LEGACY_DIR}/legacy_mediawiki_export.sql"
 
 DOCKER_MW_DIR=/var/lib/mediawiki
-DOCKER_MW_IMAGES_DIR="${DOCKER_MW_DIR}/images"
+DOCKER_MW_IMAGES_DIR=/mnt/wiki/var-lib-mediawiki-images
 # The command_parse() function sets the COMMAND variables:
 COMMAND=''
 # https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -293,7 +293,7 @@ import_images() {
     print_header 'Import images (pulled from Bytemark)'
     print_key_val 'Container context' 'web'
     print_var DCACHE_LEGACY_IMAGES_DIR
-    print_var DOCKER_MW_DIR
+    print_var DOCKER_MW_IMAGES_DIR
     echo 'Rsync cache images MediaWiki images (removes files not in cache)'
     # The rsync options below are ordered to match `man rsync`
     docker compose exec --user root web \
@@ -307,8 +307,8 @@ import_images() {
             --times \
             --stats \
             --human-readable \
-            "${DCACHE_LEGACY_IMAGES_DIR}" \
-            "${DOCKER_MW_DIR}/"
+            "${DCACHE_LEGACY_IMAGES_DIR}/" \
+            "${DOCKER_MW_IMAGES_DIR}/"
     echo 'Set ownership of entire images dir to www-data:wwww-data'
     docker compose exec --user root web chown -R www-data:www-data \
         "${DOCKER_MW_IMAGES_DIR}"

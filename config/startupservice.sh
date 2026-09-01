@@ -22,19 +22,66 @@ REQUIRED_VARIABLES=(
 )
 
 
+error_exit() {
+    echo "${E31}ERROR: ${1}${E0}" 1>&2
+    # Use exit code 0 to avoid triggering restart: on-failure
+    exit 0
+}
+
+
 # Ensure all vars are set
 for _variable in "${REQUIRED_VARIABLES[@]}"
 do
     if [[ -z "${!_variable:-}" ]]
     then
-        _msg1="${E31}ERROR: Required environment variable is not set:"
-        _msg2=" ${_variable}${E0}"
-        echo "${_msg1}${_msg2}"
-        # Use exit code 0 to avoid triggering restart: on-failure
-        exit 0
+        error_exit "Required environment variable is not set: ${_variable}"
     fi
 done
 echo "${E90}All required environment variables are present${E90}"
+
+# Ensure volume is mounted
+mountpoint --quiet /mnt/wiki || error_exit 'nothing mounted at /mnt/wiki'
+
+
+# Configure mountpoint subdirectories and symlinks
+mkdir --parents /mnt/wiki/var-lib-mediwiki-assets
+if [[ "$(readlink --canonicalize /var/lib/mediawiki/assets)" \
+    != '/mnt/wiki/var-lib-mediwiki-assets' ]]
+then
+    [[ -d '/var/lib/mediawiki/assets' ]] && rmdir /var/lib/mediawiki/assets
+    ln --force --no-dereference --symbolic --no-target-directory \
+        /mnt/wiki/var-lib-mediwiki-assets /var/lib/mediawiki/assets
+fi
+
+mkdir --parents /mnt/wiki/etc-mediawiki
+if [[ "$(readlink --canonicalize /etc/mediawiki)" \
+    != /mnt/wiki/etc-mediawiki ]]
+then
+    [[ -d /etc/mediawiki ]] && rmdir /etc/mediawiki
+    ln --force --no-dereference --symbolic --no-target-directory \
+        /mnt/wiki/etc-mediawiki /etc/mediawiki
+fi
+
+mkdir --parents \
+    /mnt/wiki/var-lib-mediawiki-images
+chmod 0700 /mnt/wiki/var-lib-mediawiki-images
+chown www-data:www-data /mnt/wiki/var-lib-mediawiki-images
+if [[ "$(readlink --canonicalize /var/lib/mediawiki/images)" \
+    != /mnt/wiki/var-lib-mediawiki-images ]]
+then
+    if [[ -d /var/lib/mediawiki/images ]]
+    then
+        [[ -f /var/lib/mediawiki/images/.htaccess ]] \
+            && mv /var/lib/mediawiki/images/.htaccess \
+                /mnt/wiki/var-lib-mediawiki-images/
+        [[ -f /var/lib/mediawiki/images/README ]] \
+            && mv /var/lib/mediawiki/images/README \
+                /mnt/wiki/var-lib-mediawiki-images/
+        rmdir /var/lib/mediawiki/images
+    fi
+    ln --force --no-dereference --symbolic --no-target-directory \
+        /mnt/wiki/var-lib-mediawiki-images /var/lib/mediawiki/images
+fi
 
 
 if [[ "${MW_SERVER_URL}" == 'http://localhost:8081' ]]

@@ -25,10 +25,8 @@ services:
       # Apache2 web server configuration (read-only)
       # (Supersedes copied file for easier development)
       - ../config/web-sites-available:/etc/apache2/sites-available:ro
-      # MediaWiki volumes
-      - volume-wiki-assets:/var/lib/mediawiki/assets
-      - volume-wiki-etc:/etc/mediawiki
-      - volume-wiki-images:/var/lib/mediawiki/images
+      # MediaWiki volume
+      - volume-wiki:/mnt/wiki
       # Legacy migration cache (read-only)
       - ./cache-legacy:/var/cache-legacy:ro
 
@@ -58,9 +56,8 @@ services:
     volumes:
       # Apache2 web server configuration (read-only)
       - ../config/web-sites-available:/etc/apache2/sites-available:ro
-      # MediaWiki volumes
-      - volume-wiki-assets-bullseye:/var/lib/mediawiki/assets
-      - volume-wiki-etc-bullseye:/etc/mediawiki
+      # MediaWiki volume
+      - volume-wiki-bullseye:/mnt/wiki
       # Legacy migration cache (read-only)
       - ./cache-legacy:/var/cache-legacy:ro
 
@@ -82,8 +79,5 @@ services:
 
 volumes:
   volume-mysql:
-  volume-wiki-assets-bullseye:
-  volume-wiki-assets:
-  volume-wiki-etc-bullseye:
-  volume-wiki-etc:
-  volume-wiki-images:
+  volume-wiki:
+  volume-wiki-bullseye:
