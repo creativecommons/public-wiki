@@ -44,13 +44,13 @@ mountpoint --quiet /mnt/wiki || error_exit 'nothing mounted at /mnt/wiki'
 
 
 # Configure mountpoint subdirectories and symlinks
-mkdir --parents /mnt/wiki/var-lib-mediwiki-assets
+mkdir --parents /mnt/wiki/var-lib-mediawiki-assets
 if [[ "$(readlink --canonicalize /var/lib/mediawiki/assets)" \
-    != '/mnt/wiki/var-lib-mediwiki-assets' ]]
+    != '/mnt/wiki/var-lib-mediawiki-assets' ]]
 then
     [[ -d '/var/lib/mediawiki/assets' ]] && rmdir /var/lib/mediawiki/assets
     ln --force --no-dereference --symbolic --no-target-directory \
-        /mnt/wiki/var-lib-mediwiki-assets /var/lib/mediawiki/assets
+        /mnt/wiki/var-lib-mediawiki-assets /var/lib/mediawiki/assets
 fi
 
 mkdir --parents /mnt/wiki/etc-mediawiki

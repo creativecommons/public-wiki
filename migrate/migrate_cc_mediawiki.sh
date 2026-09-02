@@ -263,16 +263,17 @@ export_sql() {
     mkdir -p "${LCACHE_DOCKER_DIR}"
     # https://mariadb.com/kb/en/mariadb-dump/
     # MARIADB_DATABASE variable is set by ../.env
+    # sed commands modify the dump to be compatible with
+    #   9.4.0 MySQL Community Server - GPL
     docker compose exec --env DCACHE_DOCKER_SQL="${DCACHE_DOCKER_SQL}" db \
         sh -c '/usr/bin/mariadb-dump --password="${MARIADB_ROOT_PASSWORD}" \
             --no-tablespaces --single-transaction --skip-lock-tables \
-            "${MARIADB_DATABASE}" > "${DCACHE_DOCKER_SQL}.tmp"'
+            "${MARIADB_DATABASE}" \
+                | sed -e"/^[/][*][!]999999/d" \
+                    -e"s/utf8mb4_uca1400_ai_ci/utf8mb4_0900_ai_ci/" \
+                 > "${DCACHE_DOCKER_SQL}.tmp"'
     mv "${LCACHE_DOCKER_SQL}.tmp" "${LCACHE_DOCKER_SQL}"
     du -sh "${LCACHE_DOCKER_SQL}" | repo_rel_path
-    echo
-    echo 'Compress database export'
-    gzip --force "${LCACHE_DOCKER_SQL}"
-    du -sh "${LCACHE_DOCKER_SQL}.gz" | repo_rel_path
     echo
 }
 
