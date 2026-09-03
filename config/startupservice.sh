@@ -10,9 +10,9 @@ E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E94="$(printf "\e[94m")"      # foreground: bright blue
 E97="$(printf "\e[97m")"      # foreground: bright white
 REQUIRED_VARIABLES=(
-    MARIADB_DATABASE
-    MARIADB_ROOT_PASSWORD
-    MARIADB_USER
+    MYSQL_DATABASE
+    MYSQL_ROOT_PASSWORD
+    MYSQLUSER
     MW_ADMIN_PASS
     MW_ADMIN_USER
     MW_DB_HOST
