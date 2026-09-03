@@ -63,8 +63,8 @@ services:
 
   db:
     container_name: db
-    # https://hub.docker.com/_/mariadb
-    image: mariadb
+    # https://hub.docker.com/_/mysql/
+    image: mysql
     env_file:
       - ../.env
     restart: on-failure

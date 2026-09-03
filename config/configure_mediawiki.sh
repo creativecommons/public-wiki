@@ -47,12 +47,12 @@ bold 'Begin MediaWiki installation'
 # https://www.mediawiki.org/wiki/Manual:Install.php
 ${MW_INSTALL} \
     --confpath="${CONF_PATH}" \
-    --dbname="${MARIADB_DATABASE}" \
-    --dbpass="${MARIADB_ROOT_PASSWORD}" \
+    --dbname="${MYSQL_DATABASE}" \
+    --dbpass="${MYSQL_ROOT_PASSWORD}" \
     --dbserver="${MW_DB_HOST}:${MW_DB_PORT}" \
-    --dbuser="${MARIADB_USER}" \
-    --installdbpass="${MARIADB_ROOT_PASSWORD}" \
-    --installdbuser="${MARIADB_USER}" \
+    --dbuser="${MYSQLUSER}" \
+    --installdbpass="${MYSQL_ROOT_PASSWORD}" \
+    --installdbuser="${MYSQLUSER}" \
     --pass "${MW_ADMIN_PASS}" \
     --scriptpath="" \
     --server="${MW_SERVER_URL}" \

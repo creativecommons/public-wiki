@@ -38,7 +38,7 @@ The [`docker-compose.yml`](docker-compose.yml) file defines the following
 containers:
 - **web** - Web server (Apache2/MediaWiki)
   - **[`localhost:8080`](http://localhost:8080/)**
-- **db** - Database server (MariaDB)
+- **db** - Database server (MySQL)
 
 
 ## Setup

@@ -53,6 +53,19 @@ E93="$(printf "\e[93m")"      # foreground: bright yellow
 E97="$(printf "\e[97m")"      # foreground: bright white
 E100="$(printf "\e[100m")"    # background: bright black (gray)
 E107="$(printf "\e[107m")"    # background: bright white
+MYSQL_CLIENT_CONFIG="\
+[client]
+password            = 'REPlACEPASSWORD'
+
+[mysql]
+batch
+database            = 'REPLACEDATABASE'
+skip-column-names
+
+[mysqldump]
+no-tablespaces
+set-gtid-purged     = OFF
+single-transaction"
 NOTICE_CONTAINERS="\
 ⚠️ This script's import command requires the services in
    DIR_REPO/migrate/docker-compose.yml, which includes both web-bullseye
@@ -143,39 +156,47 @@ danger_confirm() {
 
 
 database_maintenance(){
-    local _note _note_one _note_two
+    local _note _note_one _note_two _table _tables
     print_header 'Optimize MediaWiki database tables'
-    _note='note     :'
+    _tables="$(docker compose exec db sh -c \
+        'echo "SELECT TABLE_NAME FROM information_schema.tables \
+            WHERE TABLE_SCHEMA=\"my_wiki\";" \
+        | /usr/bin/mysql')"
     # Check
-    _note_one="${_note} The storage engine for the table doesn't support check"
-    echo "Check all databases. ${E90}Dicarded notes include:${E0}"
-    echo "  ${E90}${_note_one}${E0}"
-    docker compose exec db sh -c 'mariadbcheck \
-        --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
-        --check' 2>&1 | gsed --regexp-extended --null-data \
-            -e"s/[^\n]+\n${_note_one}\n//g"
+    echo 'Check tables'
+    for _table in ${_tables}
+    do
+        docker compose exec db sh -c \
+            "echo 'CHECK TABLE ${_table}' | /usr/bin/mysql \
+            | sed --null-data \
+                -e's/my[^\n]*OK\n/${E92}.${E0}/g' \
+                -e's/my[^\n]*support check\n/${E93}.${E0}/g'"
+            #| awk -F'\\t' '{printf \"%-30s  %s\\n\", \$1, \$4}'"
+    done
+    echo
     # Optimize
-    _note_one="${_note} Table does not support optimize, doing recreate [+]"
-    _note_one="${_note_one} analyze instead"
-    _note_two="${_note} The storage engine for the table doesn't support"
-    _note_two="${_note_two} optimize"
-    echo "${E1}Optimize all databases. ${E90}Dicarded notes include:${E0}"
-    echo "  ${E90}${_note_one}${E0}"
-    echo "  ${E90}${_note_two}${E0}"
-    docker compose exec db sh -c 'mariadbcheck \
-        --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
-        --optimize' 2>&1 | gsed --regexp-extended --null-data \
-            -e"s/[^\n]+\n${_note_one}\n//g" \
-            -e"s/[^\n]+\n${_note_two}\n//g"
+    echo 'Optimize tables'
+    for _table in ${_tables}
+    do
+        docker compose exec db sh -c \
+            "echo 'OPTIMIZE TABLE ${_table}' | /usr/bin/mysql \
+            | sed --null-data \
+                -e's/my[^\n]*analyze instead\n//g' \
+                -e's/my[^\n]*OK\n/${E92}.${E0}/g' \
+                -e's/my[^\n]*support optimize\n/${E93}.${E0}/g'"
+    done
+    echo
     # Analyze
-    _note_one="${_note} The storage engine for the table doesn't support"
-    _note_one="${_note_one} analyze"
-    echo "${E1}Analyize all databases. ${E90}Dicarded notes include:${E0}"
-    echo "  ${E90}${_note_one}${E0}"
-    docker compose exec db sh -c 'mariadbcheck \
-        --password="${MARIADB_ROOT_PASSWORD}" --all-databases --silent \
-        --analyze' 2>&1 | gsed --regexp-extended --null-data \
-            -e"s/[^\n]+\n${_note_one}\n//g"
+    echo 'Analyze tables'
+    for _table in ${_tables}
+    do
+        docker compose exec db sh -c \
+            "echo 'ANALYZE TABLE ${_table}' | /usr/bin/mysql \
+            | sed --null-data \
+                -e's/my[^\n]*OK\n/${E92}.${E0}/g' \
+                -e's/my[^\n]*support analyze\n/${E93}.${E0}/g'"
+    done
+    echo
     echo
 }
 
@@ -183,7 +204,6 @@ database_maintenance(){
 database_update_phase1() {
     print_header 'Update database - phase 1'
     print_key_val 'Container context' 'web-bullseye'
-    echo
 
     # https://www.mediawiki.org/wiki/Manual:Update.php
     echo -n "Update to MediaWiki 1.35.13 (web-bullseye) ${E90}from MediaWiki"
@@ -212,7 +232,6 @@ database_update_phase1() {
 database_update_phase2() {
     print_header 'Update database - phase 2'
     print_key_val 'Container context' 'web'
-    echo
 
     # https://www.mediawiki.org/wiki/Manual:Update.php
     echo -n "Update to MediaWiki to 1.43.8 (web) ${E90}from MediaWiki 1.35.13"
@@ -261,17 +280,10 @@ export_sql() {
     print_var LCACHE_DOCKER_SQL
     echo
     mkdir -p "${LCACHE_DOCKER_DIR}"
-    # https://mariadb.com/kb/en/mariadb-dump/
-    # MARIADB_DATABASE variable is set by ../.env
-    # sed commands modify the dump to be compatible with
-    #   9.4.0 MySQL Community Server - GPL
+    # https://dev.mysql.com/doc/refman/9.7/en/mysqldump.html
     docker compose exec --env DCACHE_DOCKER_SQL="${DCACHE_DOCKER_SQL}" db \
-        sh -c '/usr/bin/mariadb-dump --password="${MARIADB_ROOT_PASSWORD}" \
-            --no-tablespaces --single-transaction --skip-lock-tables \
-            "${MARIADB_DATABASE}" \
-                | sed -e"/^[/][*][!]999999/d" \
-                    -e"s/utf8mb4_uca1400_ai_ci/utf8mb4_0900_ai_ci/" \
-                 > "${DCACHE_DOCKER_SQL}.tmp"'
+        sh -c '/usr/bin/mysqldump "${MYSQL_DATABASE}" \
+                > "${DCACHE_DOCKER_SQL}.tmp"'
     mv "${LCACHE_DOCKER_SQL}.tmp" "${LCACHE_DOCKER_SQL}"
     du -sh "${LCACHE_DOCKER_SQL}" | repo_rel_path
     echo
@@ -284,8 +296,7 @@ import_database() {
     print_var DCACHE_LEGACY_SQL
     echo 'Import database dump SQL'
     docker compose exec --env DCACHE_LEGACY_SQL="${DCACHE_LEGACY_SQL}" db \
-        sh -c '/usr/bin/mariadb my_wiki --password="${MARIADB_ROOT_PASSWORD}" \
-            < "${DCACHE_LEGACY_SQL}"'
+        sh -c '/usr/bin/mysql < "${DCACHE_LEGACY_SQL}"'
     echo
 }
 
@@ -454,6 +465,45 @@ mw_run_web_bullseye() {
 }
 
 
+msyql_client_config() {
+    print_header 'Write MySQL client configuration'
+    docker compose exec db sh -c \
+        "echo \"${MYSQL_CLIENT_CONFIG}\" > /root/.my.cnf"
+    docker compose exec db chmod 0400 root/.my.cnf
+    docker compose exec db sh -c 'sed \
+        -e"s/REPlACEPASSWORD/${MYSQL_ROOT_PASSWORD}/" \
+        -e"s/REPLACEDATABASE/${MYSQL_DATABASE}/" \
+        -i /root/.my.cnf'
+    docker compose exec db ls -l /root/.my.cnf
+    docker compose exec db cat /root/.my.cnf
+    echo
+}
+
+
+mysql_disable_redo_log() {
+    print_header 'Disable MySQL redo log'
+    docker compose exec db sh -c \
+        'echo "ALTER INSTANCE DISABLE INNODB REDO_LOG;" \
+        | /usr/bin/mysql'
+    echo -n 'InnoDB redo logging is disabled. All data could be lost in case'
+    echo ' of a server'
+    echo 'crash.'
+    echo
+}
+
+
+mysql_enable_redo_log() {
+    print_header 'Disable MySQL redo log'
+    docker compose exec db sh -c \
+        'echo "ALTER INSTANCE ENABLE INNODB REDO_LOG;" \
+        | /usr/bin/mysql'
+    echo -n 'InnoDB redo logging is enabled. Data is now safe and can be'
+    echo ' recovered in case of'
+    echo 'a server crash.'
+    echo
+}
+
+
 notice_staff_only() {
     echo "${E93}${NOTICE_STAFF}${E0}"
     echo
@@ -469,15 +519,17 @@ notice_containers() {
 prep_sql() {
     print_header 'Prepare MediaWiki SQL dump (pulled from Bytemark)'
     print_var LCACHE_LEGACY_SQL
-    echo 'Update ENGINE: MyISAM to InnoDB'
-    echo 'Update CHARSET: latin1 to binary'
+    echo "Update ENGINE to InnoDB ${E90}(from MyISAM)${E0}"
+    echo "Update CHARSET to binary ${E90}(from latin1)${E0}"
     # shellcheck disable=SC2016
-    echo 'Update `searchindex` CHARSET to utf8mb4'
+    echo "Update \`searchindex\` CHARSET to utf8mb4 ${E90}(from latin1)${E0}"
+    echo 'Update datetime default to a valid (non-zero) value'
     # shellcheck disable=SC2016
     gsed --regexp-extended --null-data \
         -e's/ENGINE=MyISAM/ENGINE=InnoDB/g' \
         -e's/CHARSET=latin1/CHARSET=binary/g' \
         -e's/(FULLTEXT KEY `si_text` \(`si_text`\)\n\) ENGINE=)InnoDB( DEFAULT CHARSET=)binary/\1InnoDB\2utf8mb4/' \
+        -e"s/datetime NOT NULL DEFAULT '0000-00-00 00:00:00'/datetime NOT NULL DEFAULT '1000-01-01 00:00:00'/" \
         -i "${LCACHE_LEGACY_SQL}"
     echo
 }
@@ -505,9 +557,9 @@ pull_database() {
     print_var LEGACY_SERVER
     print_var LEGACY_MW_DB
     print_var LCACHE_LEGACY_SQL
-    echo
     mkdir -p "${LCACHE_LEGACY_DIR}"
-    # https://mariadb.com/kb/en/mariadb-dump/
+    echo 'Dump database'
+    # https://dev.mysql.com/doc/refman/9.7/en/mysqldump.html
     ssh "${LEGACY_SERVER}" \
         sudo mysqldump --defaults-extra-file=/etc/mysql/debian.cnf \
             --no-tablespaces --single-transaction --skip-lock-tables \
@@ -649,10 +701,10 @@ verify_docker_services() {
     fi
     printf "${E30}${E107}%-25s${E0}\n" ' db container'
     print_key_val 'Debian version' \
-        "$(docker compose exec db cat /etc/debian_version)"
-    print_key_val 'MariaDB version' \
-        "$(docker compose exec db mariadb --version \
-            | awk -F',' '{print $1}')"
+        "$(docker compose exec db cat /etc/oracle-release)"
+    print_key_val 'MySQL version' \
+        "$(docker compose exec db mysql --version \
+            | sed -e's/mysql  Ver //')"
 
     # Ensure web services are running
     for _service in ${_webs}
@@ -679,6 +731,10 @@ verify_docker_services() {
         print_key_val 'MediaWiki version' \
             "$(docker compose exec --user www-data "${_service}" \
                 apt-cache show mediawiki \
+                    | awk '/^Version:/ {print $2}')"
+        print_key_val 'MySQL client library' \
+            "mariadb-client $(docker compose exec --user www-data \
+                "${_service}" apt-cache show mariadb-client \
                     | awk '/^Version:/ {print $2}')"
     done
     echo
@@ -712,8 +768,10 @@ case "${COMMAND}" in
         verify_docker_services 'all'
         notice_containers
         danger_confirm
+        msyql_client_config
         import_images
         prep_sql
+        mysql_disable_redo_log
         import_database
         database_update_phase1
         database_update_phase2
@@ -721,12 +779,14 @@ case "${COMMAND}" in
         mw_maintenance_images
         mw_maintenance_titles
         mw_maintenance_rebuild
+        mysql_enable_redo_log
         database_maintenance
         ;;
     'export')
         script_setup
         verify_docker_services 'minimal'
         notice_containers
+        msyql_client_config
         export_images
         export_sql
         ;;
