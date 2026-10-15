@@ -24,6 +24,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         apache2-utils \
         ca-certificates \
         curl \
+        dma \
         git \
         imagemagick \
         less \
@@ -61,6 +62,10 @@ CMD ["/usr/local/sbin/startupservice.sh"]
 RUN a2enmod --quiet headers \
   && a2enmod --quiet php8.4 \
   && a2enmod --quiet rewrite
+
+# Add DragonFly Mail Agent (dma) configuration script
+COPY config/configure_dma.sh /usr/local/sbin/
+RUN chmod +x /usr/local/sbin/configure_dma.sh
 
 # Add MediaWiki configuration script
 COPY config/configure_mediawiki.sh /usr/local/sbin/

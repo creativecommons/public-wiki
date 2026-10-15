@@ -10,15 +10,20 @@ E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E94="$(printf "\e[94m")"      # foreground: bright blue
 E97="$(printf "\e[97m")"      # foreground: bright white
 REQUIRED_VARIABLES=(
-    MYSQL_DATABASE
-    MYSQL_ROOT_PASSWORD
-    MYSQLUSER
+    DMA_AUTH_PASS
+    DMA_AUTH_USER
+    DMA_PORT
+    DMA_ROOT_ALIAS
+    DMA_SMARTHOST
     MW_ADMIN_PASS
     MW_ADMIN_USER
     MW_DB_HOST
     MW_DB_PORT
     MW_SERVER_URL
     MW_SITENAME
+    MYSQLUSER
+    MYSQL_DATABASE
+    MYSQL_ROOT_PASSWORD
 )
 
 
@@ -39,9 +44,13 @@ do
 done
 echo "${E90}All required environment variables are present${E90}"
 
-# Ensure volume is mounted
-mountpoint --quiet /mnt/wiki || error_exit 'nothing mounted at /mnt/wiki'
 
+# Configure dma (DragonFly Mail Agent)
+/usr/local/sbin/configure_dma.sh
+
+
+# Ensure MediaWiki volume is mounted
+mountpoint --quiet /mnt/wiki || error_exit 'nothing mounted at /mnt/wiki'
 
 # Configure mountpoint subdirectories and symlinks
 mkdir --parents /mnt/wiki/var-lib-mediawiki-assets
@@ -90,6 +99,7 @@ then
 else
     CONTAINER='web'
 fi
+export CONTAINER
 
 
 echo "Waiting for database at ${MW_DB_HOST}:${MW_DB_PORT}..."
@@ -100,20 +110,8 @@ do
 done
 echo 'Database is up!'
 
-
-# Install and configure MediaWiki, if necessary
-if [[ ! -f "${CONF_PATH}/LocalSettings.php" ]]
-then
-    if [[ "${CONTAINER}" == 'web' ]]
-    then
-        echo -n 'Waiting 5 seconds so that web-bullseye can complete install'
-        echo ' first'
-        sleep 5
-    fi
-    /usr/local/sbin/configure_mediawiki.sh
-else
-    echo "${E90}Skipping MediaWiki installation (config present)${E0}"
-fi
+# Configure MediaWiki
+/usr/local/sbin/configure_mediawiki.sh
 
 if [[ "${CONTAINER}" == 'web' ]]
 then
