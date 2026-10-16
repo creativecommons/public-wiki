@@ -54,12 +54,14 @@ then
         sleep 5
     fi
 else
-    echo "${E90}Skipping MediaWiki installation (config present)${E0}"
+    echo "${E90}Skipping MW (MediaWiki) installation (config present)${E0}"
     exit
 fi
 
 
-bold 'Begin MediaWiki installation'
+bold 'Begin MW (MediaWiki) installation'
+
+
 # https://www.mediawiki.org/wiki/Manual:Install.php
 ${MW_INSTALL} \
     --confpath="${CONF_PATH}" \
@@ -80,7 +82,7 @@ ${MW_INSTALL} \
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgLogos
-bold 'Install logo ($wgLogos)'
+echo '  MW: Install logo ($wgLogos)'
 mkdir -p /var/lib/mediawiki/assets
 curl --fail --location \
     --output /var/lib/mediawiki/assets/cc.svg \
@@ -95,7 +97,7 @@ unset _logo
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgFavicon
-bold 'Install favicon ($wgFavicon)'
+echo '  MW: Install favicon ($wgFavicon)'
 mkdir -p /var/lib/mediawiki/assets
 curl --fail --location \
     --output /var/lib/mediawiki/assets/favicon.ico \
@@ -109,13 +111,13 @@ unset _favicon
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgEnableUserEmail
-bold 'Configure user-to-user email ($wgEnableUserEmail)'
+echo '  MW: Configure user-to-user email ($wgEnableUserEmail)'
 sed -e's|^\$wgEnableUserEmail = true;|$wgEnableUserEmail = false;|' \
     -i "${LOCAL_SETTINGS}"
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgPasswordSender
-bold 'Configure password reminder email address ($wgPasswordSender)'
+echo '  MW: Configure password reminder email address ($wgPasswordSender)'
 _pass_sender="\$wgPasswordSender = \"${MW_EMAIL}\";"
 sed -e"s|^\\\$wgPasswordSender = \"\";\$|${_pass_sender}|" \
     -i "${LOCAL_SETTINGS}"
@@ -123,7 +125,7 @@ unset _pass_sender
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgSessionCacheType
-bold 'Configure session cache ($wgSessionCacheType)'
+echo '  MW: Configure session cache ($wgSessionCacheType)'
 _session_cache='$wgSessionCacheType = CACHE_DB;'
 sed --regexp-extended --null-data \
     -e"s|(\\\$wgMainCacheType[^;]+;)|\\1\\n${_session_cache}|" \
@@ -132,7 +134,7 @@ unset _session_cache
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgUseFileCache
-bold 'Configure file cache ($wgUseFileCache, $wgFileCacheDirectory)'
+echo '  MW: Configure file cache ($wgUseFileCache, $wgFileCacheDirectory)'
 _file_cache='$wgUseFileCache = true;\n$wgFileCacheDirectory ='
 _file_cache="${_file_cache} \"/tmp/mediawiki_file_cache\";"
 sed --regexp-extended --null-data \
@@ -143,7 +145,7 @@ unset _file_cache
 
 # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
 # https://www.mediawiki.org/wiki/Manual:$wgEnableUploads
-bold 'Enable Uploads ($wgEnableUploads)'
+echo '  MW: Enable Uploads ($wgEnableUploads)'
 sed -e's|^\$wgEnableUploads = false;$|$wgEnableUploads = true;|' \
     -i "${LOCAL_SETTINGS}"
 for _file in /etc/php/8.4/apache2/php.ini /etc/php/8.4/cli/php.ini
@@ -157,7 +159,7 @@ done
 # https://www.mediawiki.org/wiki/Manual:$wgRightsUrl
 # https://www.mediawiki.org/wiki/Manual:$wgRightsText
 # https://www.mediawiki.org/wiki/Manual:$wgRightsIcon
-bold 'Enable rights (CC BY 4.0, $wgRightsUrl, $wgRightsText, $wgRightsIcon)'
+echo '  MW: Enable rights (CC BY 4.0, $wgRightsUrl, $wgRightsText, $wgRightsIcon)'
 _wgRightsUrl='https://creativecommons.org/licenses/by/4.0/'
 _wgRightsText='Creative Commons Attribution 4.0 International'
 _wgRightsIcon='https://licensebuttons.net/l/by/4.0/88x31.png'
@@ -170,14 +172,14 @@ unset _wgRightsUrl _wgRightsText _wgRightsIcon
 
 
 # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
-bold 'Enable short URL ($wgArticlePath)'
+echo '  MW: Enable short URL ($wgArticlePath)'
 append '# Enable short URL'
 append '$wgArticlePath = "/wiki/$1";'
 append
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgFileExtensions
-bold 'Add file extensions ($wgFileExtensions)'
+echo '  MW: Add file extensions ($wgFileExtensions)'
 append '# Additional file extensions'
 for _ext in "${FILE_EXTENSIONS[@]}"
 do
@@ -189,7 +191,7 @@ echo
 
 
 # https://www.mediawiki.org/wiki/Manual:User_rights
-bold 'Update group permissions / user rights'
+echo '  MW: Update group permissions / user rights'
 append '# Group permissions / user rights
 
 # Only allow SysOps to create accounts instead of * (all) group
@@ -234,7 +236,7 @@ foreach ($_basicPermissions as $_permission) {
 append '# Performance optimizations'
 
 # https://www.mediawiki.org/wiki/Manual:$wgDisableCounters
-bold 'Disable counters (performance, $wgDisableCounters)'
+echo '  MW: Disable counters (performance, $wgDisableCounters)'
 append '$wgDisableCounters = true;'
 
 # miser mode can't be enabled until scheduling is resolved
@@ -244,17 +246,19 @@ append '$wgDisableCounters = true;'
 
 
 append '# Extensions'
+
 # https://www.mediawiki.org/wiki/Extension:Cite
-bold 'Enable Cite extension'
+echo '  MW: Enable Cite extension'
 append 'wfLoadExtension( "Cite" );'
+
 # https://www.mediawiki.org/wiki/Extension:Nuke
-bold 'Enable Nuke extension'
+echo '  MW: Enable Nuke extension'
 append 'wfLoadExtension( "Nuke" );'
 
 
 #https://www.mediawiki.org/wiki/Manual:$wgUseRCPatrol
-bold 'Disable recent changes patrolling ($wgUseRCPatrol)'
+echo '  MW: Disable recent changes patrolling ($wgUseRCPatrol)'
 append '$wgUseRCPatrol = false;'
 
 
-bold 'MediaWiki installation complete'
+bold 'End MW (MediaWiki) installation'
