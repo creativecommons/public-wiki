@@ -8,10 +8,11 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/build_to_ghcr.yml'
-      - 'web.Dockerfile'
       - 'config/**'
-      - '!config/db.cnf'
+      - 'web.Dockerfile'
       - '!config/my.cnf'
+      - '!config/db_env_clear'
+      - '!config/db.cnf'
 
 jobs:
   build-and-push:
