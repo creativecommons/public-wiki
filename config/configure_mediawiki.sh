@@ -78,6 +78,7 @@ ${MW_INSTALL} \
         -e'/^Warning:.*default directory for uploads.*not checked/d' \
         -e'/^Warning: Because of a connection error.*X-Content-Type-Options/d'
 
+
 # https://www.mediawiki.org/wiki/Manual:$wgLogos
 bold 'Install logo ($wgLogos)'
 mkdir -p /var/lib/mediawiki/assets
@@ -92,6 +93,7 @@ sed --regexp-extended \
     -i "${LOCAL_SETTINGS}"
 unset _logo
 
+
 # https://www.mediawiki.org/wiki/Manual:$wgFavicon
 bold 'Install favicon ($wgFavicon)'
 mkdir -p /var/lib/mediawiki/assets
@@ -105,6 +107,21 @@ sed --regexp-extended --null-data \
     -i "${CONF_PATH}/LocalSettings.php"
 unset _favicon
 
+
+# https://www.mediawiki.org/wiki/Manual:$wgEnableUserEmail
+bold 'Configure user-to-user email ($wgEnableUserEmail)'
+sed -e's|^\$wgEnableUserEmail = true;|$wgEnableUserEmail = false;|' \
+    -i "${LOCAL_SETTINGS}"
+
+
+# https://www.mediawiki.org/wiki/Manual:$wgPasswordSender
+bold 'Configure password reminder email address ($wgPasswordSender)'
+_pass_sender="\$wgPasswordSender = \"${MW_EMAIL}\";"
+sed -e"s|^\\\$wgPasswordSender = \"\";\$|${_pass_sender}|" \
+    -i "${LOCAL_SETTINGS}"
+unset _pass_sender
+
+
 # https://www.mediawiki.org/wiki/Manual:$wgSessionCacheType
 bold 'Configure session cache ($wgSessionCacheType)'
 _session_cache='$wgSessionCacheType = CACHE_DB;'
@@ -112,6 +129,7 @@ sed --regexp-extended --null-data \
     -e"s|(\\\$wgMainCacheType[^;]+;)|\\1\\n${_session_cache}|" \
     -i "${LOCAL_SETTINGS}"
 unset _session_cache
+
 
 # https://www.mediawiki.org/wiki/Manual:$wgUseFileCache
 bold 'Configure file cache ($wgUseFileCache, $wgFileCacheDirectory)'
@@ -121,6 +139,7 @@ sed --regexp-extended --null-data \
     -e"s|(\\\$wgMemCachedServers[^;]+;)|\\1\\n${_file_cache}|" \
     -i "${LOCAL_SETTINGS}"
 unset _file_cache
+
 
 # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
 # https://www.mediawiki.org/wiki/Manual:$wgEnableUploads
@@ -133,6 +152,7 @@ do
         -e's|upload_max_filesize = .*$|upload_max_filesize = 20M|' \
         -i "${_file}"
 done
+
 
 # https://www.mediawiki.org/wiki/Manual:$wgRightsUrl
 # https://www.mediawiki.org/wiki/Manual:$wgRightsText
@@ -148,11 +168,13 @@ sed --regexp-extended \
     -i "${LOCAL_SETTINGS}"
 unset _wgRightsUrl _wgRightsText _wgRightsIcon
 
+
 # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
 bold 'Enable short URL ($wgArticlePath)'
 append '# Enable short URL'
 append '$wgArticlePath = "/wiki/$1";'
 append
+
 
 # https://www.mediawiki.org/wiki/Manual:$wgFileExtensions
 bold 'Add file extensions ($wgFileExtensions)'
@@ -187,24 +209,26 @@ foreach ($_basicPermissions as $_permission) {
   $wgGroupPermissions["user"][$_permission] = true;
   $wgGroupPermissions["*"][$_permission] = false;
 }
-
-# Remove legacy CC groups
-$_legacyCcGroups = [
-    "affiliate",
-    "approved",
-    "community",
-    "regional",
-    "staff",
-];
-foreach ($_legacyCcGroups as $_group) {
-    unset( $wgGroupPermissions[$_group] );
-    unset( $wgRevokePermissions[$_group] );
-    unset( $wgAddGroups[$_group] );
-    unset( $wgRemoveGroups[$_group] );
-    unset( $wgGroupsAddToSelf[$_group] );
-    unset( $wgGroupsRemoveFromSelf[$_group] );
-}
 '
+# Completed (no longer necessary)
+#append '
+## Remove legacy CC groups
+#$_legacyCcGroups = [
+#    "affiliate",
+#    "approved",
+#    "community",
+#    "regional",
+#    "staff",
+#];
+#foreach ($_legacyCcGroups as $_group) {
+#    unset( $wgGroupPermissions[$_group] );
+#    unset( $wgRevokePermissions[$_group] );
+#    unset( $wgAddGroups[$_group] );
+#    unset( $wgRemoveGroups[$_group] );
+#    unset( $wgGroupsAddToSelf[$_group] );
+#    unset( $wgGroupsRemoveFromSelf[$_group] );
+#}
+#'
 
 
 append '# Performance optimizations'
