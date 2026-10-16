@@ -2,14 +2,13 @@
 set -o errexit
 set -o nounset
 
-CONF_PATH='/etc/mediawiki'
 # https://en.wikipedia.org/wiki/ANSI_escape_code
 E0="$(printf "\e[0m")"        # reset
 E31="$(printf "\e[31m")"      # foreground: red
 E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E94="$(printf "\e[94m")"      # foreground: bright blue
 E97="$(printf "\e[97m")"      # foreground: bright white
-REQUIRED_VARIABLES=(
+CONFIG_VARIABLES=(
     DMA_AUTH_PASS
     DMA_AUTH_USER
     DMA_PORT
@@ -19,13 +18,21 @@ REQUIRED_VARIABLES=(
     MW_ADMIN_USER
     MW_DB_HOST
     MW_DB_PORT
+    MW_EMAIL
     MW_SERVER_URL
     MW_SITENAME
     MYSQLUSER
     MYSQL_DATABASE
     MYSQL_ROOT_PASSWORD
 )
-
+if [[ "${MW_SERVER_URL}" == 'http://localhost:8081' ]]
+then
+    CONTAINER='web-bullseye'
+else
+    CONTAINER='web'
+fi
+export CONTAINER
+WEB_URL="${MW_SERVER_URL}/"
 
 error_exit() {
     echo "${E31}ERROR: ${1}${E0}" 1>&2
@@ -34,8 +41,8 @@ error_exit() {
 }
 
 
-# Ensure all vars are set
-for _variable in "${REQUIRED_VARIABLES[@]}"
+# Ensure all configuration vars are set
+for _variable in "${CONFIG_VARIABLES[@]}"
 do
     if [[ -z "${!_variable:-}" ]]
     then
@@ -45,61 +52,11 @@ done
 echo "${E90}All required environment variables are present${E90}"
 
 
-# Configure dma (DragonFly Mail Agent)
-/usr/local/sbin/configure_dma.sh
+# Configure mount
+/usr/local/sbin/configure_mount.sh
 
-
-# Ensure MediaWiki volume is mounted
-mountpoint --quiet /mnt/wiki || error_exit 'nothing mounted at /mnt/wiki'
-
-# Configure mountpoint subdirectories and symlinks
-mkdir --parents /mnt/wiki/var-lib-mediawiki-assets
-if [[ "$(readlink --canonicalize /var/lib/mediawiki/assets)" \
-    != '/mnt/wiki/var-lib-mediawiki-assets' ]]
-then
-    [[ -d '/var/lib/mediawiki/assets' ]] && rmdir /var/lib/mediawiki/assets
-    ln --force --no-dereference --symbolic --no-target-directory \
-        /mnt/wiki/var-lib-mediawiki-assets /var/lib/mediawiki/assets
-fi
-
-mkdir --parents /mnt/wiki/etc-mediawiki
-if [[ "$(readlink --canonicalize /etc/mediawiki)" \
-    != /mnt/wiki/etc-mediawiki ]]
-then
-    [[ -d /etc/mediawiki ]] && rmdir /etc/mediawiki
-    ln --force --no-dereference --symbolic --no-target-directory \
-        /mnt/wiki/etc-mediawiki /etc/mediawiki
-fi
-
-mkdir --parents \
-    /mnt/wiki/var-lib-mediawiki-images
-chmod 0700 /mnt/wiki/var-lib-mediawiki-images
-chown www-data:www-data /mnt/wiki/var-lib-mediawiki-images
-if [[ "$(readlink --canonicalize /var/lib/mediawiki/images)" \
-    != /mnt/wiki/var-lib-mediawiki-images ]]
-then
-    if [[ -d /var/lib/mediawiki/images ]]
-    then
-        [[ -f /var/lib/mediawiki/images/.htaccess ]] \
-            && mv /var/lib/mediawiki/images/.htaccess \
-                /mnt/wiki/var-lib-mediawiki-images/
-        [[ -f /var/lib/mediawiki/images/README ]] \
-            && mv /var/lib/mediawiki/images/README \
-                /mnt/wiki/var-lib-mediawiki-images/
-        rmdir /var/lib/mediawiki/images
-    fi
-    ln --force --no-dereference --symbolic --no-target-directory \
-        /mnt/wiki/var-lib-mediawiki-images /var/lib/mediawiki/images
-fi
-
-
-if [[ "${MW_SERVER_URL}" == 'http://localhost:8081' ]]
-then
-    CONTAINER='web-bullseye'
-else
-    CONTAINER='web'
-fi
-export CONTAINER
+# Configure msmtp
+/usr/local/sbin/configure_msmtp.sh
 
 
 echo "Waiting for database at ${MW_DB_HOST}:${MW_DB_PORT}..."
@@ -110,8 +67,17 @@ do
 done
 echo 'Database is up!'
 
-# Configure MediaWiki
+
+# Configure MW (MediaWiki)
 /usr/local/sbin/configure_mediawiki.sh
+
+
+# Unset configuration variables so that they are not available to Apache2
+for _variable in "${CONFIG_VARIABLES[@]}"
+do
+    unset "${_variable}"
+done
+
 
 if [[ "${CONTAINER}" == 'web' ]]
 then
@@ -120,9 +86,9 @@ then
     chown www-data:www-data /tmp/mediawiki_file_cache
 
     /sbin/apache2ctl -v
-    echo "${E97}Starting apache2 webserver: ${E94}${MW_SERVER_URL}/${E0}"
+    echo "${E97}Starting apache2 webserver: ${E94}${WEB_URL}${E0}"
     /sbin/apache2ctl -D FOREGROUND -k start
 else
-    echo "${E97}Sleeping 😴${E0}"
+    echo "${E97}Sleeping 💤${E0}"
     while true; do sleep 5 || break; done
 fi
