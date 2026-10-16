@@ -17,9 +17,6 @@ services:
     ports:
       - '8080:80'
     restart: on-failure
-    security_opt:
-      # For compatibility with Northflank
-      - no-new-privileges:true
     volumes:
       # MediaWiki volume
       - volume-wiki:/mnt/wiki

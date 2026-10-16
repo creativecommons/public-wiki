@@ -6,6 +6,7 @@ set -o nounset
 CONF_PATH='/etc/mediawiki'
 # https://en.wikipedia.org/wiki/ANSI_escape_code
 E0="$(printf "\e[0m")"        # reset
+E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E97="$(printf "\e[97m")"      # foreground: bright white
 FILE_EXTENSIONS=(
     doc
@@ -25,11 +26,11 @@ FILE_EXTENSIONS=(
     zip
 )
 LOCAL_SETTINGS="${CONF_PATH}/LocalSettings.php"
-if [[ "${MW_SERVER_URL}" == 'http://localhost:8081' ]]
+if [[ "${CONTAINER}" == 'web' ]]
 then
-    MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/install.php'
-else
     MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/run.php install'
+else
+    MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/install.php'
 fi
 VOCAB_REPO='https://raw.githubusercontent.com/creativecommons/vocabulary'
 
@@ -41,6 +42,21 @@ append() {
 bold() {
     printf "${E97}%s${E0}\n" "${@}"
 }
+
+
+# Install and configure MediaWiki, if necessary
+if [[ ! -f "${CONF_PATH}/LocalSettings.php" ]]
+then
+    if [[ "${CONTAINER}" == 'web' ]]
+    then
+        echo -n 'Waiting 5 seconds so that web-bullseye can complete install'
+        echo ' first'
+        sleep 5
+    fi
+else
+    echo "${E90}Skipping MediaWiki installation (config present)${E0}"
+    exit
+fi
 
 
 bold 'Begin MediaWiki installation'
