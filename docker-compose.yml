@@ -5,15 +5,16 @@ services:
 
   web:
     container_name: web
-    depends_on:
-      - db
     build:
       context: .
-    links:
+      dockerfile: web.Dockerfile
+    depends_on:
       - db
     env_file:
       - .env
     init: true
+    links:
+      - db
     ports:
       - '8080:80'
     restart: on-failure
@@ -23,16 +24,26 @@ services:
 
   db:
     container_name: db
-    # https://hub.docker.com/_/mysql/
-    image: mysql
+    build:
+      args:
+        - MYSQL_DATABASE
+      context: .
+      dockerfile: db.Dockerfile
+      secrets:
+        - MYSQL_ROOT_PASSWORD
     env_file:
       - .env
+      - config/db_env_clear
     restart: on-failure
     volumes:
       # Configuration (read-only)
       - ../config/db.cnf:/etc/mysql/conf.d/db.cnf:ro
       # Data
       - volume-mysql:/var/lib/mysql
+
+secrets:
+  MYSQL_ROOT_PASSWORD:
+    environment: MYSQL_ROOT_PASSWORD
 
 volumes:
   volume-mysql:
