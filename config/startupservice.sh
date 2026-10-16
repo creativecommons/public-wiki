@@ -8,7 +8,7 @@ E31="$(printf "\e[31m")"      # foreground: red
 E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E94="$(printf "\e[94m")"      # foreground: bright blue
 E97="$(printf "\e[97m")"      # foreground: bright white
-REQUIRED_VARIABLES=(
+CONFIG_VARIABLES=(
     DMA_AUTH_PASS
     DMA_AUTH_USER
     DMA_PORT
@@ -32,7 +32,7 @@ else
     CONTAINER='web'
 fi
 export CONTAINER
-
+WEB_URL="${MW_SERVER_URL}/"
 
 error_exit() {
     echo "${E31}ERROR: ${1}${E0}" 1>&2
@@ -41,8 +41,8 @@ error_exit() {
 }
 
 
-# Ensure all vars are set
-for _variable in "${REQUIRED_VARIABLES[@]}"
+# Ensure all configuration vars are set
+for _variable in "${CONFIG_VARIABLES[@]}"
 do
     if [[ -z "${!_variable:-}" ]]
     then
@@ -55,11 +55,8 @@ echo "${E90}All required environment variables are present${E90}"
 # Configure mount
 /usr/local/sbin/configure_mount.sh
 
-# Configure dma (DragonFly Mail Agent)
-/usr/local/sbin/configure_dma.sh
-
-# Configure misc (miscellaneous)
-/usr/local/sbin/configure_misc.sh
+# Configure msmtp
+/usr/local/sbin/configure_msmtp.sh
 
 
 echo "Waiting for database at ${MW_DB_HOST}:${MW_DB_PORT}..."
@@ -75,6 +72,13 @@ echo 'Database is up!'
 /usr/local/sbin/configure_mediawiki.sh
 
 
+# Unset configuration variables so that they are not available to Apache2
+for _variable in "${CONFIG_VARIABLES[@]}"
+do
+    unset "${_variable}"
+done
+
+
 if [[ "${CONTAINER}" == 'web' ]]
 then
     # Prepare for MediaWiki file cache
@@ -82,7 +86,7 @@ then
     chown www-data:www-data /tmp/mediawiki_file_cache
 
     /sbin/apache2ctl -v
-    echo "${E97}Starting apache2 webserver: ${E94}${MW_SERVER_URL}/${E0}"
+    echo "${E97}Starting apache2 webserver: ${E94}${WEB_URL}${E0}"
     /sbin/apache2ctl -D FOREGROUND -k start
 else
     echo "${E97}Sleeping 💤${E0}"

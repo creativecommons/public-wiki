@@ -24,13 +24,13 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         apache2-utils \
         ca-certificates \
         curl \
-        dma \
         git \
         imagemagick \
         less \
         libapache2-mod-php \
         mariadb-client \
         mediawiki \
+        msmtp-mta \
         php \
         php-apcu \
         php-cli \
@@ -52,24 +52,22 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
 
 # Copy startup and configuration scripts and make executable
 COPY \
-    config/configure_dma.sh \
     config/configure_mediawiki.sh \
-    config/configure_misc.sh \
     config/configure_mount.sh \
+    config/configure_msmtp.sh \
     config/startupservice.sh \
     /usr/local/sbin/
 RUN chmod +x \
-    /usr/local/sbin/configure_dma.sh \
     /usr/local/sbin/configure_mediawiki.sh \
-    /usr/local/sbin/configure_misc.sh \
     /usr/local/sbin/configure_mount.sh \
+    /usr/local/sbin/configure_msmtp.sh \
     /usr/local/sbin/startupservice.sh
 
 # Set startup script
 CMD ["/usr/local/sbin/startupservice.sh"]
 
 # Add Apache2 virtualhost configuration
-COPY config/web-sites-available /etc/apache2/sites-available/
+COPY config/000-default.conf /etc/apache2/sites-available/000-default.conf
 
 # Enable Apache modules - NOTE: PHP version
 RUN a2enmod --quiet headers \
