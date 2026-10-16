@@ -1,0 +1,22 @@
+# This file is used to clear unneeded variables that are set by .env
+
+# Database config
+MW_DB_HOST=
+MW_DB_PORT=
+
+# MediaWiki admin config
+MW_ADMIN_USER=
+MW_ADMIN_PASS=
+
+# MediaWiki site config
+MW_SERVER_URL=
+MW_SITENAME=
+
+# DragonFly Mail Agent (DMA) config
+DMA_AUTH_PASS=
+DMA_AUTH_USER=
+DMA_PORT=
+DMA_ROOT_ALIAS=
+DMA_SMARTHOST=
+
+# vim: ft=sh
