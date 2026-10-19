@@ -182,29 +182,74 @@ unset _wgRightsUrl _wgRightsText _wgRightsIcon
 echo '  MW: Enable short URL ($wgArticlePath)'
 append '# Enable short URL'
 append '$wgArticlePath = "/wiki/$1";'
-append
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgFileExtensions
 echo '  MW: Add file extensions ($wgFileExtensions)'
+append
 append '# Additional file extensions'
 for _ext in "${FILE_EXTENSIONS[@]}"
 do
     append "\$wgFileExtensions[] = \"${_ext}\";"
     echo -n "  ${_ext}"
 done
-append
 echo
 
 
+#append
+#append '# Performance optimizations'
+## https://www.mediawiki.org/wiki/Manual:Performance_tuning
+#
+## miser mode can't be enabled until scheduling is resolved
+## https://www.mediawiki.org/wiki/Manual:$wgMiserMode
+#bold 'Disable database-intensive features (performance, $wgMiserMode)'
+#append '$wgMiserMode = true;'
+
+
+append
+append '# CDN caching'
+
+echo '  MW: Configure Cloudflare CDN ($wgCdnMaxAge, $wgCdnServersNoPurge)'
+# https://www.mediawiki.org/wiki/Manual:$wgCdnMaxAge
+append '$wgCdnMaxAge = 3600;  # 1 hour'
+# https://www.mediawiki.org/wiki/Manual:$wgCdnServersNoPurge
+append '$wgCdnServersNoPurge = [];'
+# shellcheck disable=2013
+for _remote_ip in $(awk '/^RemoteIPTrustedProxy/ {print $2}' \
+    /etc/apache2/conf-available/remoteip.conf)
+do
+    append "\$wgCdnServersNoPurge[] = \"${_remote_ip}\";"
+done
+
+# https://www.mediawiki.org/wiki/Manual:$wgUseCdn
+echo '  MW: Enable CDN ($wgUseCdn)'
+append '$wgUseCdn = true;'
+
+
+
+append
+append '# Extensions'
+
+# https://www.mediawiki.org/wiki/Extension:Cite
+echo '  MW: Enable Cite extension'
+append 'wfLoadExtension( "Cite" );'
+
+# https://www.mediawiki.org/wiki/Extension:Nuke
+echo '  MW: Enable Nuke extension'
+append 'wfLoadExtension( "Nuke" );'
+
+
+#https://www.mediawiki.org/wiki/Manual:$wgUseRCPatrol
+echo '  MW: Disable recent changes patrolling ($wgUseRCPatrol)'
+append '$wgUseRCPatrol = false;'
+
 # https://www.mediawiki.org/wiki/Manual:User_rights
 echo '  MW: Update group permissions / user rights'
-append '# Group permissions / user rights
 
+append '# Group permissions / user rights
 # Only allow SysOps to create accounts instead of * (all) group
 $wgGroupPermissions["sysop"]["createaccount"] = true;
 $wgGroupPermissions["*"]["createaccount"] = false;
-
 # Move basic permissions to user group from * (all) group
 $_basicPermissions = [
     "createpage",
@@ -238,34 +283,6 @@ foreach ($_basicPermissions as $_permission) {
 #    unset( $wgGroupsRemoveFromSelf[$_group] );
 #}
 #'
-
-
-append '# Performance optimizations'
-
-# https://www.mediawiki.org/wiki/Manual:$wgDisableCounters
-echo '  MW: Disable counters (performance, $wgDisableCounters)'
-append '$wgDisableCounters = true;'
-
-# miser mode can't be enabled until scheduling is resolved
-## https://www.mediawiki.org/wiki/Manual:$wgDisableCounters
-#bold 'Disable database-intensive features (performance, $wgMiserMode)'
-#append '$wgMiserMode = true;'
-
-
-append '# Extensions'
-
-# https://www.mediawiki.org/wiki/Extension:Cite
-echo '  MW: Enable Cite extension'
-append 'wfLoadExtension( "Cite" );'
-
-# https://www.mediawiki.org/wiki/Extension:Nuke
-echo '  MW: Enable Nuke extension'
-append 'wfLoadExtension( "Nuke" );'
-
-
-#https://www.mediawiki.org/wiki/Manual:$wgUseRCPatrol
-echo '  MW: Disable recent changes patrolling ($wgUseRCPatrol)'
-append '$wgUseRCPatrol = false;'
 
 
 bold 'End MW (MediaWiki) installation'
