@@ -36,13 +36,11 @@ LCACHE_LEGACY_DIR="${DIR_MIGRATE}/cache-legacy"
 LCACHE_LEGACY_IMAGES_DIR="${LCACHE_LEGACY_DIR}/images"
 LCACHE_LEGACY_SQL="${LCACHE_LEGACY_DIR}/legacy_mediawiki_export.sql"
 
-DOCKER_MW_DIR=/var/lib/mediawiki
 DOCKER_MW_IMAGES_DIR=/mnt/wiki/var-lib-mediawiki-images
 # The command_parse() function sets the COMMAND variables:
 COMMAND=''
 # https://en.wikipedia.org/wiki/ANSI_escape_code
 E0="$(printf "\e[0m")"        # reset
-E1="$(printf "\e[1m")"        # bold
 E30="$(printf "\e[30m")"      # foreground: black
 E31="$(printf "\e[31m")"      # foreground: red
 E33="$(printf "\e[33m")"      # foreground: yellow

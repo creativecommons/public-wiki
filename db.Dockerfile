@@ -1,7 +1,7 @@
 # https://docs.docker.com/engine/reference/builder/
 
 # https://hub.docker.com/_/mysql/
-FROM mysql
+FROM mysql:26
 
 # Add MySQL client configuration
 ARG MYSQL_DATABASE

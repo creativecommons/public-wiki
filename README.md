@@ -27,7 +27,8 @@ most advanced and closest implementation of the
 
 ## Contributing
 
-See [`CONTRIBUTING.md`][org-contrib].
+See [`CONTRIBUTING.md`][org-contrib] and the [**Development**](#Development)
+section, below.
 
 [org-contrib]: https://github.com/creativecommons/.github/blob/main/CONTRIBUTING.md
 
@@ -39,21 +40,6 @@ containers:
 - **web** - Web server (Apache2/MediaWiki)
   - **[`localhost:8080`](http://localhost:8080/)**
 - **db** - Database server (MySQL)
-
-
-## Setup
-
-1. Create the enviornment `.env` file by copying
-   [`.env.example`](.env.example):
-    ```shell
-    cp .env.example .env
-    ```
-2. Update `.env` to ensure all variable have appropriate values.
-3. Build and start Docker:
-    ```shell
-    docker-compose up
-    ```
-4. Wait for the build and initialization to complete
 
 
 ## Dev configuration
@@ -93,6 +79,42 @@ Also see:
 
 [index-dev-env]: https://github.com/creativecommons/index-dev-env
 [sre-salt-prime]: https://github.com/creativecommons/sre-salt-prime
+
+
+## Development
+
+
+### Dependencies
+
+1. Install Docker ([Get Docker | Docker Docs][get-docker])
+2. Install hadolint ([Install - hadolint/hadolint][hadolint-install])
+3. Install shellcheck ([Installing - koalaman/shellcheck][shellcheck-install])
+4. Install prek ([Installation - j178/prek][prek-install])
+5. Prepare and install prek Git hooks:
+   ```shell
+   prek install --prepare-hooks
+   ```
+
+[get-docker]: https://docs.docker.com/get-started/get-docker/
+[hadolint-install]: https://github.com/hadolint/hadolint#install
+[shellcheck-install]: https://github.com/koalaman/shellcheck#installing
+[prek-install]: https://github.com/j178/prek#installation
+
+
+## Setup
+
+1. Create the enviornment `.env` file by copying
+   [`.env.example`](.env.example):
+    ```shell
+    cp .env.example .env
+    ```
+2. Update `.env` to ensure all variable have appropriate values.
+3. Build and start Docker:
+    ```shell
+    docker-compose up
+    ```
+4. Wait for the build and initialization to complete
+
 
 
 ## License
