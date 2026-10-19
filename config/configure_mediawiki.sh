@@ -239,13 +239,16 @@ echo '  MW: Enable Nuke extension'
 append 'wfLoadExtension( "Nuke" );'
 
 
-#https://www.mediawiki.org/wiki/Manual:$wgUseRCPatrol
+# https://www.mediawiki.org/wiki/Manual:$wgUseRCPatrol
 echo '  MW: Disable recent changes patrolling ($wgUseRCPatrol)'
+append
 append '$wgUseRCPatrol = false;'
+
 
 # https://www.mediawiki.org/wiki/Manual:User_rights
 echo '  MW: Update group permissions / user rights'
 
+append
 append '# Group permissions / user rights
 # Only allow SysOps to create accounts instead of * (all) group
 $wgGroupPermissions["sysop"]["createaccount"] = true;
