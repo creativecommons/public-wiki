@@ -26,6 +26,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         curl \
         git \
         imagemagick \
+        ipv6calc \
         less \
         libapache2-mod-php \
         mariadb-client \
@@ -52,12 +53,14 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
 
 # Copy startup and configuration scripts and make executable
 COPY \
+    config/configure_apache2.sh \
     config/configure_mediawiki.sh \
     config/configure_mount.sh \
     config/configure_msmtp.sh \
     config/startupservice.sh \
     /usr/local/sbin/
 RUN chmod +x \
+    /usr/local/sbin/configure_apache2.sh \
     /usr/local/sbin/configure_mediawiki.sh \
     /usr/local/sbin/configure_mount.sh \
     /usr/local/sbin/configure_msmtp.sh \
