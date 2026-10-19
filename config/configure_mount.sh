@@ -1,7 +1,14 @@
 #!/bin/bash
 # shellcheck disable=SC2016
 set -o errexit
+set -o errtrace
 set -o nounset
+
+# shellcheck disable=2154
+trap '_es=${?};
+    printf "${0}: line ${LINENO}: \"${BASH_COMMAND}\"";
+    printf " exited with a status of ${_es}\n";
+    exit ${_es}' ERR
 
 # https://en.wikipedia.org/wiki/ANSI_escape_code
 E0="$(printf "\e[0m")"        # reset

@@ -1,6 +1,12 @@
 #!/bin/bash
 set -o errexit
+set -o errtrace
 set -o nounset
+
+trap '_es=${?};
+    printf "${0}: line ${LINENO}: \"${BASH_COMMAND}\"";
+    printf " exited with a status of ${_es}\n";
+    exit ${_es}' ERR
 
 # https://en.wikipedia.org/wiki/ANSI_escape_code
 E0="$(printf "\e[0m")"        # reset
@@ -52,13 +58,6 @@ done
 echo "${E90}All required environment variables are present${E90}"
 
 
-# Configure mount
-/usr/local/sbin/configure_mount.sh
-
-# Configure msmtp
-/usr/local/sbin/configure_msmtp.sh
-
-
 echo "Waiting for database at ${MW_DB_HOST}:${MW_DB_PORT}..."
 while ! (echo > "/dev/tcp/${MW_DB_HOST}/${MW_DB_PORT}") >/dev/null 2>&1
 do
@@ -67,6 +66,15 @@ do
 done
 echo 'Database is up!'
 
+
+# Configure Apache2
+/usr/local/sbin/configure_apache2.sh
+
+# Configure mount
+/usr/local/sbin/configure_mount.sh
+
+# Configure msmtp
+/usr/local/sbin/configure_msmtp.sh
 
 # Configure MW (MediaWiki)
 /usr/local/sbin/configure_mediawiki.sh
