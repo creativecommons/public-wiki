@@ -146,6 +146,7 @@ verify_docker_service() {
     then
         error_exit 'docker daemon is not running'
     fi
+    print_key_val 'Container' 'db'
     # Ensure service is running
     if ! docker compose exec db true 2>/dev/null
     then
