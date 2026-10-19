@@ -60,6 +60,14 @@ echo '# vim: ft=apache:' >> "${REMOTEIP_CONF}"
 printf "    ${E90}%s${E0}\n" "$(a2enconf --quiet remoteip)"
 printf "    ${E90}%s${E0}\n" "$(a2enmod --quiet remoteip)"
 
+echo '  Apache2: Test configuration'
+if apachectl -t &>/dev/null
+then
+    echo "    ${E90}Syntax OK${E0}"
+else
+    apachectl -t
+fi
+
 
 bold 'End Apache2 configuration'
 
