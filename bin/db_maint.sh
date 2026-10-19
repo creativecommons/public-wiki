@@ -9,6 +9,8 @@ trap '_es=${?};
     printf " exited with a status of ${_es}\n";
     exit ${_es}' ERR
 
+# shellcheck disable=SC2034
+DIR_REPO="$(cd -P -- "${0%/*}/.." && pwd -P)"
 # https://en.wikipedia.org/wiki/ANSI_escape_code
 E0="$(printf "\e[0m")"        # reset
 E30="$(printf "\e[30m")"      # foreground: black
@@ -16,9 +18,8 @@ E31="$(printf "\e[31m")"      # foreground: red
 E92="$(printf "\e[92m")"      # foreground: bright green
 E93="$(printf "\e[93m")"      # foreground: bright yellow
 E97="$(printf "\e[97m")"      # foreground: bright white
+E100="$(printf "\e[100m")"    # background: bright black (gray)
 E107="$(printf "\e[107m")"    # background: bright white
-# shellcheck disable=SC2034
-DIR_REPO="$(cd -P -- "${0%/*}/.." && pwd -P)"
 SCRIPT_NAME="${0##*/}"
 TABLES=
 
@@ -103,7 +104,6 @@ maintenance_3_analyze() {
     echo
 }
 
-
 mysql_disable_redo_log() {
     print_header 'Disable MySQL redo log'
     docker compose exec db sh -c \
@@ -131,18 +131,32 @@ print_header() {
     printf "${E30}${E107}# %-69s$(date '+%T') ${E0}\n" "${@}"
 }
 
+print_key_val() {
+    printf "${E97}${E100}%16s${E0} %s\n" "${1}:" "${2}"
+}
+
+print_var() {
+    print_key_val "${1}" "${!1}"
+}
+
 verify_docker_service() {
-    local _msg
+    print_header 'Verifying docker service'
     # Ensure docker daemon is running
     if [[ ! -S /var/run/docker.sock ]]
     then
         error_exit 'docker daemon is not running'
     fi
     # Ensure service is running
-    if ! docker compose exec "${CONTAINER}" true 2>/dev/null
+    if ! docker compose exec db true 2>/dev/null
     then
-        error_exit "docker service '${CONTAINER}' is not running"
+        error_exit "docker service 'db' is not running"
     fi
+    print_key_val 'OS version' \
+        "$(docker compose exec db cat /etc/oracle-release)"
+    print_key_val 'MySQL version' \
+        "$(docker compose exec db mysql --version \
+            | sed -e's/mysql  Ver //')"
+    echo
 }
 
 #### MAIN #####################################################################
@@ -150,6 +164,7 @@ verify_docker_service() {
 cd "${DIR_REPO}"
 case "${1:-maint}" in
     maint)
+        verify_docker_service
         get_mywiki_tables
         mysql_disable_redo_log
         maintenance_1_check
