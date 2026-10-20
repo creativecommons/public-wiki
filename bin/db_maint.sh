@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# Analze maintenance is not included because when an InnoDB table is optimized,
+# it does a recreate + analyze instead. For details, see:
+# https://dev.mysql.com/doc/refman/26.7/en/optimize-table.html#optimize-table-innodb-details
 set -o errexit
 set -o errtrace
 set -o nounset
@@ -20,6 +24,7 @@ E93="$(printf "\e[93m")"      # foreground: bright yellow
 E97="$(printf "\e[97m")"      # foreground: bright white
 E100="$(printf "\e[100m")"    # background: bright black (gray)
 E107="$(printf "\e[107m")"    # background: bright white
+FROM_PARENT_SCRIPT=${FROM_PARENT_SCRIPT:-0}
 SCRIPT_NAME="${0##*/}"
 TABLES=
 
@@ -43,85 +48,95 @@ error_exit() {
 get_mywiki_tables() {
     local _count
     print_header 'Get MediaWiki tables'
-    TABLES="$(docker compose exec db sh -c \
+    TABLES="$(docker compose exec 'db' sh -c \
         'echo " SELECT TABLE_NAME
                 FROM information_schema.tables \
                 WHERE TABLE_SCHEMA=\"my_wiki\";" \
             | /usr/bin/mysql --skip-column-names')"
     _count="$(echo "${TABLES}" | wc -l)"
     _count="${_count##* }"
-    echo "${_count} tables identified"
+    print_key_val 'Table count' "${_count}"
     echo
 
 }
 
-maintenance_1_check() {
+maintenance() {
+    # https://dev.mysql.com/doc/refman/26.7/en/optimize-table.html
+    local _i _op_lower _op_title _op_upper
+    _op_title="${1}"
+    _op_lower="$(echo "${_op_title}" | tr '[:upper:]' '[:lower:]')"
+    _op_upper="$(echo "${_op_title}" | tr '[:lower:]' '[:upper:]')"
     local _table
-    print_header 'Check tables'
-    for _table in ${TABLES}
-    do
-        docker compose exec db sh -c \
-            "echo 'CHECK TABLE ${_table};' \
+    print_header "${_op_title} MediaWiki tables"
+
+    print_bright 'Key'
+    case "${_op_lower}" in
+        check)
+            echo "${E92}.${E0} status OK"
+            TIMEFORMAT="${E97}${E100}        check duration:${E0} %3lR"
+            ;;
+        optimize)
+            echo -n "${E92}.${E0} status OK (table does not support optimize,"
+            echo ' doing recreate + analyze instead)'
+            TIMEFORMAT="${E97}${E100}     optimize duration:${E0} %3lR"
+            ;;
+    esac
+    echo -n "${E93}_${E0} The storage engine for the table doesn't support"
+    echo " ${_op_lower}"
+    echo
+
+    print_bright "Running ${_op_upper} TABLE on all MediaWiki tables"
+    time {
+        declare -i _i=1
+        for _table in ${TABLES}
+        do
+            docker compose exec 'db' sh -c \
+                "echo '${_op_upper} TABLE ${_table};' \
                 | /usr/bin/mysql --skip-column-names \
                 | sed --null-data \
+                    -e's/my[^\n]*analyze instead\n[^\n]*OK\n/${E92}.${E0}/g' \
                     -e's/my[^\n]*OK\n/${E92}.${E0}/g' \
-                    -e's/my[^\n]*support check\n/${E93}.${E0}/g'"
-    done
-    echo
-    echo
-}
-
-maintenance_2_optimize() {
-    local _table
-    print_header 'Optimize tables'
-    for _table in ${TABLES}
-    do
-        docker compose exec db sh -c \
-            "echo 'OPTIMIZE TABLE ${_table}' \
-                | /usr/bin/mysql --skip-column-names \
-                | sed --null-data \
-                    -e's/my[^\n]*analyze instead\n//g' \
-                    -e's/my[^\n]*OK\n/${E92}.${E0}/g' \
-                    -e's/my[^\n]*support optimize\n/${E93}.${E0}/g'"
-    done
-    echo
+                    -e's/my[^\n]*support ${_op_lower}\n/${E93}_${E0}/g'"
+            if (( _i < 80 ))
+            then
+                (( _i = _i + 1 ))
+            else
+                echo
+                (( _i = 0 ))
+            fi
+        done
+        echo
+    }
+    unset TIMEFORMAT
     echo
 }
 
-maintenance_3_analyze() {
-    local _table
-    print_header 'Analyze tables'
-    for _table in ${TABLES}
-    do
-        docker compose exec db sh -c \
-            "echo 'ANALYZE TABLE ${_table}' \
-                | /usr/bin/mysql --skip-column-names \
-                | sed --null-data \
-                    -e's/my[^\n]*OK\n/${E92}.${E0}/g' \
-                    -e's/my[^\n]*support analyze\n/${E93}.${E0}/g'"
-    done
-    echo
-    echo
-}
-
-mysql_disable_redo_log() {
-    print_header 'Disable MySQL redo log'
-    docker compose exec db sh -c \
-        'echo "ALTER INSTANCE DISABLE INNODB REDO_LOG;" | /usr/bin/mysql'
-    echo -n 'InnoDB redo logging is disabled. All data could be lost in'
-    echo ' case of a server'
-    echo 'crash.'
+mysql_redo_log() {
+    (( FROM_PARENT_SCRIPT == 0 )) || return 0
+    local _op_lower _op_title _op_upper
+    _op_title="${1}"
+    _op_lower="$(echo "${_op_title}" | tr '[:upper:]' '[:lower:]')"
+    _op_upper="$(echo "${_op_title}" | tr '[:lower:]' '[:upper:]')"
+    (( FROM_PARENT_SCRIPT == 0 )) || return 0
+    print_header "${_op_title} MySQL redo log"
+    docker compose exec --env OPERATION="${_op_upper}" 'db' \
+        sh -c 'echo "ALTER INSTANCE ${OPERATION} INNODB REDO_LOG;" | mysql'
+    echo -n "InnoDB redo logging is ${_op_lower}d."
+    case "${_op_lower}" in
+        disable)
+            echo ' All data could be lost in case of a server'
+            echo 'crash.'
+            ;;
+        enable)
+            echo ' Data is now safe and can be recovered in case of'
+            echo 'a server crash.'
+            ;;
+    esac
     echo
 }
 
-mysql_enable_redo_log() {
-    print_header 'Disable MySQL redo log'
-    docker compose exec db sh -c \
-        'echo "ALTER INSTANCE ENABLE INNODB REDO_LOG;" | /usr/bin/mysql'
-    echo -n 'InnoDB redo logging is enabled. Data is now safe and can be'
-    echo ' recovered in case of'
-    echo 'a server crash.'
-    echo
+print_bright() {
+    echo "${E97}${1}${E0}"
 }
 
 print_header() {
@@ -130,7 +145,9 @@ print_header() {
 }
 
 print_key_val() {
-    printf "${E97}${E100}%16s${E0} %s\n" "${1}:" "${2}"
+    # Although 23 characters is excessive for the labels in this script, it is
+    # also called by bin/move_
+    printf "${E97}${E100}%23s${E0} %s\n" "${1}:" "${2}"
 }
 
 print_var() {
@@ -138,23 +155,26 @@ print_var() {
 }
 
 verify_docker_service() {
+    (( FROM_PARENT_SCRIPT == 0 )) || return 0
     print_header 'Verifying docker service'
     # Ensure docker daemon is running
     if [[ ! -S /var/run/docker.sock ]]
     then
         error_exit 'docker daemon is not running'
     fi
-    print_key_val 'Container' 'db'
+    print_key_val 'Container' "${E97}db${E0}"
     # Ensure service is running
-    if ! docker compose exec db true 2>/dev/null
+    if ! docker compose exec 'db' true 2>/dev/null
     then
         error_exit "docker service 'db' is not running"
     fi
     print_key_val 'OS version' \
-        "$(docker compose exec db cat /etc/oracle-release)"
+        "$(docker compose exec 'db' cat /etc/oracle-release)"
     print_key_val 'MySQL version' \
-        "$(docker compose exec db mysql --version \
-            | sed -e's/mysql  Ver //')"
+        "$(docker compose exec 'db' mysql --version \
+            | sed -r \
+                -e's/^mysql  Ver //' \
+                -e"s/ [(]/\n${E100}                       ${E0} (/")"
     echo
 }
 
@@ -165,11 +185,10 @@ case "${1:-maint}" in
     maint)
         verify_docker_service
         get_mywiki_tables
-        mysql_disable_redo_log
-        maintenance_1_check
-        maintenance_2_optimize
-        maintenance_3_analyze
-        mysql_enable_redo_log
+        mysql_redo_log 'Disable'
+        maintenance 'Check'
+        maintenance 'Optimize'
+        mysql_redo_log 'Enable'
         ;;
     *) echo "${NOTICE_HELP}";;
 esac
