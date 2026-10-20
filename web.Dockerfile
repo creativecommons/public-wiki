@@ -14,7 +14,8 @@ LABEL org.opencontainers.image.source=https://github.com/creativecommons/public-
 #   clean-up, and update CA certificates
 # - git is included because MediaWiki says: "Git version control software not
 #   found. [...] Note Special:Version will not display commit hashes."
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+RUN set -o errexit -o nounset \
+    && DEBIAN_FRONTEND=noninteractive apt-get update \
         --no-allow-insecure-repositories --quiet \
     && DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade \
         --no-install-recommends --no-install-suggests --quiet --yes \
@@ -73,7 +74,8 @@ CMD ["/usr/local/sbin/startupservice.sh"]
 COPY config/000-default.conf /etc/apache2/sites-available/000-default.conf
 
 # Enable Apache modules - NOTE: PHP version
-RUN a2enmod --quiet headers \
+RUN set -o errexit -o nounset \
+  && a2enmod --quiet headers \
   && a2enmod --quiet php8.4 \
   && a2enmod --quiet rewrite
 

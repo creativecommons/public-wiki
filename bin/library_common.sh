@@ -30,6 +30,55 @@ SCRIPT_NAME="${0##*/}"
 
 #### FUNCTIONS ################################################################
 
+docker_info_db() {
+    print_key_val 'Docker container' "${E97}db${E0}"
+    if ! docker compose exec 'db' true 2>/dev/null
+    then
+        error_exit "Docker 'db' service is not running"
+    fi
+    print_key_val 'OS version' \
+        "$(docker compose exec 'db' cat /etc/oracle-release)"
+    print_key_val 'MySQL version' \
+        "$(docker compose exec 'db' mysql --version \
+            | sed -r \
+                -e's/^mysql  Ver //' \
+                -e"s/ [(]/\n${E100}                       ${E0} (/")"
+    echo
+}
+
+docker_info_web() {
+    print_key_val 'Docker container' "${E97}web${E0}"
+    if ! docker compose exec 'web' true 2>/dev/null
+    then
+        error_exit "docker 'web' service is not running"
+    fi
+    print_key_val 'Debian version' \
+        "$(docker compose exec 'web' cat /etc/debian_version)"
+    print_key_val 'PHP version' \
+        "$(docker compose exec 'web' \
+            /usr/bin/php --version | awk '/^PHP/ {print $2}')"
+    if ! docker compose exec 'web' \
+        test -f /etc/mediawiki/LocalSettings.php
+    then
+        error_exit 'web: initial MediaWiki install has not been completed'
+    fi
+    print_key_val 'MediaWiki version' \
+        "$(docker compose exec 'web' \
+            apt-cache show mediawiki | awk '/^Version:/ {print $2}')"
+    print_key_val 'MySQL client library' \
+        "mariadb-client $(docker compose exec 'web' \
+            apt-cache show mariadb-client | awk '/^Version:/ {print $2}')"
+    echo
+}
+
+
+docker_verify_daemon() {
+    if [[ ! -S /var/run/docker.sock ]]
+    then
+        error_exit 'Docker daemon is not running'
+    fi
+}
+
 error_exit() {
     # Echo error message and exit with error
     echo -e "${E31}ERROR:${E0} ${*}" 1>&2

@@ -63,6 +63,7 @@ hooks = [
     args = [
       "--failure-threshold", "warning",
       "--info", "DL3008",
+      "--info", "DL3041",
     ],
     types = [ "dockerfile" ],
     description = "Runs hadolint to lint Dockerfiles",

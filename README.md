@@ -86,23 +86,29 @@ Also see:
 
 ### Dependencies
 
-1. Install Docker ([Get Docker | Docker Docs][get-docker])
-2. Install Railway CLI ([Installing - CLI | Railway Docs][railway-install])
-   - (Only required to move data to/from remote Railway production containers.
-     A Railway account with appropriate access is required.)
-3. Install hadolint ([Install - hadolint/hadolint][hadolint-install])
-4. Install shellcheck ([Installing - koalaman/shellcheck][shellcheck-install])
-5. Install prek ([Installation - j178/prek][prek-install])
-6. Prepare and install prek Git hooks:
+1. Install dependencies
+   macOS installation example:
+   ```shell
+   brew install hadolint prek railway rsync shellcheck
+   ```
+   1. Docker ([Get Docker | Docker Docs][docker-install])
+   2. Install hadolint ([Install - hadolint/hadolint][hadolint-install])
+   3. Install prek ([Installation - j178/prek][prek-install])
+   4. Install Railway CLI ([Installing - CLI | Railway Docs][railway-install])
+   5. Install Rsync ([rsync download][rsync-install])
+   6. Install shellcheck ([Installing -
+      koalaman/shellcheck][shellcheck-install])
+2. Prepare and install prek Git hooks:
    ```shell
    prek install --prepare-hooks
    ```
 
-[get-docker]: https://docs.docker.com/get-started/get-docker/
-[railway-install]: https://docs.railway.com/cli#installing-the-cli
+[docker-install]: https://docs.docker.com/get-started/get-docker/
 [hadolint-install]: https://github.com/hadolint/hadolint#install
-[shellcheck-install]: https://github.com/koalaman/shellcheck#installing
 [prek-install]: https://github.com/j178/prek#installation
+[railway-install]: https://docs.railway.com/cli#installing-the-cli
+[rsync-install]: https://rsync.samba.org/download.html
+[shellcheck-install]: https://github.com/koalaman/shellcheck#installing
 
 
 ## Setup

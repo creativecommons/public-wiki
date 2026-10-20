@@ -9,7 +9,7 @@
 #
 # Analze maintenance is not included because when an InnoDB table is optimized,
 # it does a recreate + analyze instead. For details, see:
-# https://dev.mysql.com/doc/refman/26.7/en/optimize-table.html#optimize-table-innodb-details
+# https://dev.mysql.com/doc/refman/9.7/en/optimize-table.html#optimize-table-innodb-details
 
 #### FUNCTIONS ################################################################
 
@@ -29,7 +29,7 @@ mysql_get_mywiki_tables() {
 }
 
 mysql_maintenance() {
-    # https://dev.mysql.com/doc/refman/26.7/en/optimize-table.html
+    # https://dev.mysql.com/doc/refman/9.7/en/optimize-table.html
     local _i _op_lower _op_title _op_upper
     _op_title="${1}"
     _op_lower="$(echo "${_op_title}" | tr '[:upper:]' '[:lower:]')"

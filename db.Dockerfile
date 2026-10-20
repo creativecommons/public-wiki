@@ -1,7 +1,12 @@
 # https://docs.docker.com/engine/reference/builder/
 
 # https://hub.docker.com/_/mysql/
-FROM mysql:26
+FROM mysql:9
+
+RUN set -o errexit -o nounset \
+    && microdnf install -y \
+        less \
+    && microdnf clean all
 
 # Add MySQL client configuration
 ARG MYSQL_DATABASE
