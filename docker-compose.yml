@@ -21,6 +21,10 @@ services:
     volumes:
       # MediaWiki volume
       - volume-wiki:/mnt/wiki
+      # Pull cache (read-only)
+      - ./cache/pull:/mnt/pull:ro
+      # Export cache
+      - ./cache/export:/mnt/export
 
   db:
     container_name: db
@@ -40,6 +44,11 @@ services:
       - ../config/db.cnf:/etc/mysql/conf.d/db.cnf:ro
       # Data
       - volume-mysql:/var/lib/mysql
+      # Pull cache (read-only)
+      - ./cache/pull:/mnt/pull:ro
+      # Export cache
+      - ./cache/export:/mnt/export
+
 
 secrets:
   MYSQL_ROOT_PASSWORD:
