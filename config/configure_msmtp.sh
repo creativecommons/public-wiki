@@ -29,7 +29,7 @@ MAILNAME="${MAILNAME%%:*}"
 MAILNAME="${MAILNAME%/}"
 if [[ "${MAILNAME}" == 'localhost' ]]
 then
-    MAILNAME="docker-public-wiki-${CONTAINER}"
+    MAILNAME='docker-public-wiki-web'
 fi
 echo "${MAILNAME}" > /etc/mailname
 

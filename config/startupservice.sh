@@ -32,13 +32,13 @@ CONFIG_VARIABLES=(
     MYSQL_DATABASE
     MYSQL_ROOT_PASSWORD
 )
-if [[ "${MW_SERVER_URL}" == 'http://localhost:8081' ]]
+if [[ "${MW_SERVER_URL}" =~ ^http://localhost ]]
 then
-    CONTAINER='web-bullseye'
+    CONTAINER_ENV=dev
 else
-    CONTAINER='web'
+    CONTAINER_ENV=prod
 fi
-export CONTAINER
+export CONTAINER_ENV
 WEB_URL="${MW_SERVER_URL}/"
 
 error_exit() {
@@ -88,16 +88,10 @@ do
 done
 
 
-if [[ "${CONTAINER}" == 'web' ]]
-then
-    # Prepare for MediaWiki file cache
-    mkdir -p /tmp/mediawiki_file_cache
-    chown www-data:www-data /tmp/mediawiki_file_cache
+# Prepare for MediaWiki file cache
+mkdir -p /tmp/mediawiki_file_cache
+chown www-data:www-data /tmp/mediawiki_file_cache
 
-    /sbin/apache2ctl -v
-    echo "${E97}Starting apache2 webserver: ${E94}${WEB_URL}${E0}"
-    /sbin/apache2ctl -D FOREGROUND -k start
-else
-    echo "${E97}Sleeping 💤${E0}"
-    while true; do sleep 5 || break; done
-fi
+/sbin/apache2ctl -v
+echo "${E97}Starting apache2 webserver: ${E94}${WEB_URL}${E0}"
+/sbin/apache2ctl -D FOREGROUND -k start
