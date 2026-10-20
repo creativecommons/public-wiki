@@ -1,6 +1,6 @@
 # Bash library (DON'T execute)
 #
-# shellcheck disable=SC2148
+# shellcheck shell=bash disable=SC2148
 #
 # Usage:
 #   DIR_REPO="$(cd -P -- "${0%/*}/.." && pwd -P)"
