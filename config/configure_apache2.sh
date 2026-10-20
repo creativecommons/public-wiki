@@ -30,6 +30,9 @@ echo '# Restoring original visitor IPs · Cloudflare Support docs
 # https://developers.cloudflare.com/support/troubleshooting/restoring-visitor-ips/restoring-original-visitor-ips/
 RemoteIPHeader CF-Connecting-IP
 
+# Railway
+RemoteIPInternalProxy 100.64.0.0/10
+
 # https://httpd.apache.org/docs/current/mod/mod_log_config.html#formats
 LogFormat "%{%F %T}t.%{msec_frac}t %a %u %>s \"%r\" \"%{Location}o\" %O \"%{Referer}i\" \"%{User-Agent}i\"" remoteipcustom' \
     >> "${REMOTEIP_CONF}"
