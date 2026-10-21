@@ -29,45 +29,56 @@ bold 'Begin Apache2 configuration'
 
 case "${CONTAINER_ENV}" in
     dev)
-        PREFIX='#'
+        PREFIX='#-'
         NOTE="[dev disabled]${E90}"
-        append '# CDN not present in development environment'
-        append
         ;;
     prod)
         PREFIX='';
         NOTE='Apache2:';;
 esac
 
-echo "  ${NOTE} Configure RemoteIP (Cloudflare, Railway)${E0}"
+append "# https://httpd.apache.org/docs/current/mod/mod_log_config.html#formats
+LogFormat \"%{%F %T}t.%{msec_frac}t %a %u %>s \\\"%r\\\" \\\"%{Location}o\\\" %O \
+\\\"%{Referer}i\\\" \\\"%{User-Agent}i\\\"\" remoteipcustom\
+"
+
+append
+if [[ -n "${PREFIX}" ]]
+then
+    append '# Production configuration disabled in development'
+fi
+echo "  ${NOTE} Configure Railway (RemoteIPInternalProxy)${E0}"
 append "\
-# https://httpd.apache.org/docs/current/mod/mod_log_config.html#formats
-LogFormat \"%{%F %T}t.%{msec_frac}t %a %u %>s \\\"%r\\\" \\\"%{Location}o\\\" %O \\\"%{Referer}i\\\" \\\"%{User-Agent}i\\\"\" remoteipcustom
+${PREFIX}# Railway
+${PREFIX}RemoteIPInternalProxy 100.64.0.0/10\
+"
 
-# Restoring original visitor IPs · Cloudflare Support docs
-# https://developers.cloudflare.com/support/troubleshooting/restoring-visitor-ips/restoring-original-visitor-ips/
-${PREFIX}RemoteIPHeader CF-Connecting-IP
-
-# Railway
-${PREFIX}RemoteIPInternalProxy 100.64.0.0/10"
+echo "  ${NOTE} Configure Cloudflare (RemoteIPHeader, RemoteIPTrustedProxy)${E0}"
+append "${PREFIX}
+${PREFIX}# Cloudflare
+${PREFIX}# Restoring original visitor IPs · Cloudflare Support docs
+${PREFIX}# https://developers.cloudflare.com/support/troubleshooting/\
+restoring-visitor-ips/restoring-original-visitor-ips/
+${PREFIX}RemoteIPHeader CF-Connecting-IP\
+"
 
 # IPv4
-append
+append "${PREFIX}"
 IPV4="$(curl --http2 --raw --silent https://www.cloudflare.com/ips-v4 \
          | sort -V)"
-append '# https://www.cloudflare.com/ips-v4'
+append "${PREFIX}# https://www.cloudflare.com/ips-v4"
 for _ip in ${IPV4}
 do
     append "${PREFIX}RemoteIPTrustedProxy ${_ip}"
 done
 
 # IPv6
-append
+append "${PREFIX}"
 IPV6="$(curl --http2 --raw --silent https://www.cloudflare.com/ips-v6 \
         | ipv6calc --addr_to_fulluncompressed \
         | sort \
         | ipv6calc --addr_to_compressed)"
-append '# https://www.cloudflare.com/ips-v6'
+append "${PREFIX}# https://www.cloudflare.com/ips-v6"
 for _ip in ${IPV6}
 do
     append "${PREFIX}RemoteIPTrustedProxy ${_ip}"

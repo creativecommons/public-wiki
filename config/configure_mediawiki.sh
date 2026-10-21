@@ -189,35 +189,35 @@ echo
 
 
 append
-case "${CONTAINER_ENV}" in
-    dev)
-        PREFIX='# '
-        NOTE="[dev disabled]${E90}"
-        append '# CDN not present in development environment'
-        ;;
-    prod)
-        PREFIX='';
-        NOTE='MW:';;
-esac
-append "${PREFIX}# CDN caching"
+append '# CDN caching'
 
 # https://www.mediawiki.org/wiki/Manual:$wgCdnMaxAge
 echo '  Configure cache timeout ($wgCdnMaxAge)'
 append '$wgCdnMaxAge = 3600;  # 1 hour'
 
+# https://www.mediawiki.org/wiki/Manual:$wgUseCdn
+echo '  Enable CDN ($wgUseCdn)'
+append '$wgUseCdn = true;'
+
+case "${CONTAINER_ENV}" in
+    dev)
+        PREFIX='#-'
+        NOTE="[dev disabled]${E90}"
+        append '#-Production configuration disabled in development'
+        ;;
+    prod)
+        PREFIX='';
+        NOTE='MW:';;
+esac
 # https://www.mediawiki.org/wiki/Manual:$wgCdnServersNoPurge
 echo "  ${NOTE} Configure Cloudflare CDN IPs (\$wgCdnServersNoPurge)${E0}"
 append "${PREFIX}\$wgCdnServersNoPurge = [];"
 # shellcheck disable=2013
-for _remote_ip in $(awk '/^#?RemoteIPTrustedProxy/ {print $2}' \
+for _remote_ip in $(awk '/^#?-?RemoteIPTrustedProxy/ {print $2}' \
     /etc/apache2/conf-available/remoteip.conf)
 do
     append "${PREFIX}\$wgCdnServersNoPurge[] = \"${_remote_ip}\";"
 done
-
-# https://www.mediawiki.org/wiki/Manual:$wgUseCdn
-echo '  Enable CDN ($wgUseCdn)'
-append '$wgUseCdn = true;'
 
 
 append
