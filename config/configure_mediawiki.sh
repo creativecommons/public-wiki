@@ -33,12 +33,7 @@ FILE_EXTENSIONS=(
     zip
 )
 LOCAL_SETTINGS="${CONF_PATH}/LocalSettings.php"
-if [[ "${CONTAINER}" == 'web' ]]
-then
-    MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/run.php install'
-else
-    MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/install.php'
-fi
+MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/run.php install'
 VOCAB_REPO='https://raw.githubusercontent.com/creativecommons/vocabulary'
 
 
@@ -51,23 +46,10 @@ bold() {
 }
 
 
-# Install and configure MediaWiki, if necessary
-if [[ ! -f "${CONF_PATH}/LocalSettings.php" ]]
-then
-    if [[ "${CONTAINER}" == 'web' ]]
-    then
-        echo -n 'Waiting 5 seconds so that web-bullseye can complete install'
-        echo ' first'
-        sleep 5
-    fi
-else
-    echo "${E90}Skipping MW (MediaWiki) installation (config present)${E0}"
-    exit
-fi
-
-
 bold 'Begin MW (MediaWiki) installation'
 
+
+rm -f "${LOCAL_SETTINGS}"
 
 # https://www.mediawiki.org/wiki/Manual:Install.php
 ${MW_INSTALL} \
@@ -191,7 +173,7 @@ append '# Additional file extensions'
 for _ext in "${FILE_EXTENSIONS[@]}"
 do
     append "\$wgFileExtensions[] = \"${_ext}\";"
-    echo -n "  ${_ext}"
+    echo -n "  ${E90}${_ext}${E0}"
 done
 echo
 
@@ -209,22 +191,33 @@ echo
 append
 append '# CDN caching'
 
-echo '  MW: Configure Cloudflare CDN ($wgCdnMaxAge, $wgCdnServersNoPurge)'
 # https://www.mediawiki.org/wiki/Manual:$wgCdnMaxAge
+echo '  Configure cache timeout ($wgCdnMaxAge)'
 append '$wgCdnMaxAge = 3600;  # 1 hour'
-# https://www.mediawiki.org/wiki/Manual:$wgCdnServersNoPurge
-append '$wgCdnServersNoPurge = [];'
-# shellcheck disable=2013
-for _remote_ip in $(awk '/^RemoteIPTrustedProxy/ {print $2}' \
-    /etc/apache2/conf-available/remoteip.conf)
-do
-    append "\$wgCdnServersNoPurge[] = \"${_remote_ip}\";"
-done
 
 # https://www.mediawiki.org/wiki/Manual:$wgUseCdn
-echo '  MW: Enable CDN ($wgUseCdn)'
+echo '  Enable CDN ($wgUseCdn)'
 append '$wgUseCdn = true;'
 
+case "${CONTAINER_ENV}" in
+    dev)
+        PREFIX='#-'
+        NOTE="[dev disabled]${E90}"
+        append '#-Production configuration disabled in development'
+        ;;
+    prod)
+        PREFIX='';
+        NOTE='MW:';;
+esac
+# https://www.mediawiki.org/wiki/Manual:$wgCdnServersNoPurge
+echo "  ${NOTE} Configure Cloudflare CDN IPs (\$wgCdnServersNoPurge)${E0}"
+append "${PREFIX}\$wgCdnServersNoPurge = [];"
+# shellcheck disable=2013
+for _remote_ip in $(awk '/^#?-?RemoteIPTrustedProxy/ {print $2}' \
+    /etc/apache2/conf-available/remoteip.conf)
+do
+    append "${PREFIX}\$wgCdnServersNoPurge[] = \"${_remote_ip}\";"
+done
 
 
 append
@@ -245,10 +238,9 @@ append
 append '$wgUseRCPatrol = false;'
 
 
+append
 # https://www.mediawiki.org/wiki/Manual:User_rights
 echo '  MW: Update group permissions / user rights'
-
-append
 append '# Group permissions / user rights
 # Only allow SysOps to create accounts instead of * (all) group
 $wgGroupPermissions["sysop"]["createaccount"] = true;
@@ -267,25 +259,6 @@ foreach ($_basicPermissions as $_permission) {
   $wgGroupPermissions["*"][$_permission] = false;
 }
 '
-# Completed (no longer necessary)
-#append '
-## Remove legacy CC groups
-#$_legacyCcGroups = [
-#    "affiliate",
-#    "approved",
-#    "community",
-#    "regional",
-#    "staff",
-#];
-#foreach ($_legacyCcGroups as $_group) {
-#    unset( $wgGroupPermissions[$_group] );
-#    unset( $wgRevokePermissions[$_group] );
-#    unset( $wgAddGroups[$_group] );
-#    unset( $wgRemoveGroups[$_group] );
-#    unset( $wgGroupsAddToSelf[$_group] );
-#    unset( $wgGroupsRemoveFromSelf[$_group] );
-#}
-#'
 
 
 bold 'End MW (MediaWiki) installation'
