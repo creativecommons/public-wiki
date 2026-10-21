@@ -202,22 +202,22 @@ esac
 append "${PREFIX}# CDN caching"
 
 # https://www.mediawiki.org/wiki/Manual:$wgCdnMaxAge
-echo "  ${NOTE} Configure cache timeout (\$wgCdnMaxAge)${E0}"
-append "${PREFIX}\$wgCdnMaxAge = 3600;  # 1 hour"
+echo '  Configure cache timeout ($wgCdnMaxAge)'
+append '$wgCdnMaxAge = 3600;  # 1 hour'
 
 # https://www.mediawiki.org/wiki/Manual:$wgCdnServersNoPurge
-echo "  ${NOTE} Configure Cloudflare CDN (\$wgCdnServersNoPurge)${E0}"
+echo "  ${NOTE} Configure Cloudflare CDN IPs (\$wgCdnServersNoPurge)${E0}"
 append "${PREFIX}\$wgCdnServersNoPurge = [];"
 # shellcheck disable=2013
-for _remote_ip in $(awk '/^RemoteIPTrustedProxy/ {print $2}' \
+for _remote_ip in $(awk '/^#?RemoteIPTrustedProxy/ {print $2}' \
     /etc/apache2/conf-available/remoteip.conf)
 do
     append "${PREFIX}\$wgCdnServersNoPurge[] = \"${_remote_ip}\";"
 done
 
 # https://www.mediawiki.org/wiki/Manual:$wgUseCdn
-echo "  ${NOTE} Enable CDN (\$wgUseCdn)${E0}"
-append "${PREFIX}\$wgUseCdn = true;"
+echo '  Enable CDN ($wgUseCdn)'
+append '$wgUseCdn = true;'
 
 
 append
