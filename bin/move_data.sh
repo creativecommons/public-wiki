@@ -541,11 +541,17 @@ sql_import() {
     print_key_val 'Container' "${E97}db${E0}"
     print_var 'DOCKER_PULL_SQL'
     echo
+    echo 'Disable autocommit'
+    docker compose exec 'db' sh -c 'echo "SET autocommit=0;" | mysql'
     echo 'Import database dump SQL file from local pull cache'
     TIMEFORMAT="${E97}${E100}       import duration:${E0} %3lR"
     time docker compose exec --env DOCKER_PULL_SQL="${DOCKER_PULL_SQL}" 'db' \
         sh -c 'mysql < "${DOCKER_PULL_SQL}"'
     unset TIMEFORMAT
+    echo 'Commit the current transaction'
+    docker compose exec 'db' sh -c 'echo "COMMIT;" | mysql'
+    echo 'Enable autocommit'
+    docker compose exec 'db' sh -c 'echo "SET autocommit=1;" | mysql'
     echo
 }
 
