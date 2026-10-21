@@ -37,16 +37,6 @@ then
         /mnt/wiki/var-lib-mediawiki-assets /var/lib/mediawiki/assets
 fi
 
-echo '  mount: Configure etc symlink'
-mkdir --parents /mnt/wiki/etc-mediawiki
-if [[ "$(readlink --canonicalize /etc/mediawiki)" \
-    != /mnt/wiki/etc-mediawiki ]]
-then
-    [[ -d /etc/mediawiki ]] && rmdir /etc/mediawiki
-    ln --force --no-dereference --symbolic --no-target-directory \
-        /mnt/wiki/etc-mediawiki /etc/mediawiki
-fi
-
 echo '  mount: Configure images symlink'
 mkdir --parents \
     /mnt/wiki/var-lib-mediawiki-images
@@ -68,6 +58,13 @@ then
     ln --force --no-dereference --symbolic --no-target-directory \
         /mnt/wiki/var-lib-mediawiki-images /var/lib/mediawiki/images
 fi
+
+# TODO: remove this section after initial deployment
+echo '  mount: Remove etc symlink'
+mkdir --parents /mnt/wiki/etc-mediawiki
+[[ -d /mnt/wiki/etc-mediawiki ]] && rm -rf /mnt/wiki/etc-mediawiki
+[[ -h /etc/mediawiki ]] && rm -f /etc/mediawiki
+mkdir -p /etc/mediawiki
 
 
 bold 'End mount configuration'
