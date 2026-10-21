@@ -41,6 +41,7 @@ fi
 export CONTAINER_ENV
 WEB_URL="${MW_SERVER_URL}/"
 
+
 error_exit() {
     echo "${E31}ERROR: ${1}${E0}" 1>&2
     # Use exit code 0 to avoid triggering restart: on-failure
@@ -59,10 +60,10 @@ done
 echo "${E90}All required environment variables are present${E90}"
 
 
-echo "Waiting for database at ${MW_DB_HOST}:${MW_DB_PORT}..."
 while ! (echo > "/dev/tcp/${MW_DB_HOST}/${MW_DB_PORT}") >/dev/null 2>&1
 do
-    echo "${E90}Database not reachable yet. Retrying in 1s...${E0}"
+    echo -n "${E90}Database at ${MW_DB_HOST}:${MW_DB_PORT} is unreachable."
+    echo " Retrying in 1s...${E0}"
     sleep 1
 done
 echo 'Database is up!'

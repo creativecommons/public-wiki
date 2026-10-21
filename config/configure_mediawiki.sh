@@ -42,11 +42,12 @@ append() {
 }
 
 bold() {
-    printf "${E97}%s${E0}\n" "${@}"
+    printf "${E97}mw: %s${E0} ${E90}%s${E0}\n" "${1}" \
+        "$(date --utc '+%F %T.%N %Z')"
 }
 
 
-bold 'Begin MW (MediaWiki) installation'
+bold 'Begin MediaWiki installation'
 
 
 rm -f "${LOCAL_SETTINGS}"
@@ -66,12 +67,31 @@ ${MW_INSTALL} \
     --skins=Vector \
     "${MW_SITENAME}" "${MW_ADMIN_USER}" \
     | sed --regexp-extended \
-        -e'/^Warning:.*default directory for uploads.*not checked/d' \
-        -e'/^Warning: Because of a connection error.*X-Content-Type-Options/d'
-
+        -e'/^The environment has been checked. You can install MediaWiki\.$/d' \
+        -e'/^Warning: Your default directory for.*not checked.*install\.$/d' \
+        -e'/^Warning: Because of a connection error, it was not.*uploads\.$/d' \
+        -e'/^done$/d' \
+        -e'/^MediaWiki has been successfully installed\..*on that page\.$/d' \
+        -e's/^/mw: /' \
+        -e"s/^(mw: Warning:.*)\$/${E90}\1${E0}/"
+# Full text of deleted lines:
+# 1. The environment has been checked. You can install MediaWiki.
+# 2. Warning: Your default directory for uploads (/usr/share/mediawiki/images/) is
+#    not checked for vulnerability to arbitrary script execution during the CLI
+#    install.
+# 3. Warning: Because of a connection error, it was not possibly to verify that
+#    images in your uploads directory, respond with the HTTP header
+#    X-Content-Type-Options: nosniff to protect browsers from potentially unsafe
+#    files. It is highly recommended to configure appropriate response headers on
+#    your webserver before enabling uploads.
+# 4. done [many occurances]
+# 5. MediaWiki has been successfully installed. You can now visit [URL] to view
+#    your wiki. If you have questions, check out our frequently asked questions
+#    list: <https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:FAQ> or
+#    use one of the support forums linked on that page.
 
 # https://www.mediawiki.org/wiki/Manual:$wgLogos
-echo '  MW: Install logo ($wgLogos)'
+echo 'mw: Install logo ($wgLogos)'
 mkdir -p /var/lib/mediawiki/assets
 curl --fail --location \
     --output /var/lib/mediawiki/assets/cc.svg \
@@ -86,7 +106,7 @@ unset _logo
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgFavicon
-echo '  MW: Install favicon ($wgFavicon)'
+echo 'mw: Install favicon ($wgFavicon)'
 mkdir -p /var/lib/mediawiki/assets
 curl --fail --location \
     --output /var/lib/mediawiki/assets/favicon.ico \
@@ -100,13 +120,13 @@ unset _favicon
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgEnableUserEmail
-echo '  MW: Configure user-to-user email ($wgEnableUserEmail)'
+echo 'mw: Configure user-to-user email ($wgEnableUserEmail)'
 sed -e's|^\$wgEnableUserEmail = true;|$wgEnableUserEmail = false;|' \
     -i "${LOCAL_SETTINGS}"
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgPasswordSender
-echo '  MW: Configure password reminder email address ($wgPasswordSender)'
+echo 'mw: Configure password reminder email address ($wgPasswordSender)'
 _pass_sender="\$wgPasswordSender = \"${MW_EMAIL}\";"
 sed -e"s|^\\\$wgPasswordSender = \"\";\$|${_pass_sender}|" \
     -i "${LOCAL_SETTINGS}"
@@ -114,7 +134,7 @@ unset _pass_sender
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgSessionCacheType
-echo '  MW: Configure session cache ($wgSessionCacheType)'
+echo 'mw: Configure session cache ($wgSessionCacheType)'
 _session_cache='$wgSessionCacheType = CACHE_DB;'
 sed --regexp-extended --null-data \
     -e"s|(\\\$wgMainCacheType[^;]+;)|\\1\\n${_session_cache}|" \
@@ -123,7 +143,7 @@ unset _session_cache
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgUseFileCache
-echo '  MW: Configure file cache ($wgUseFileCache, $wgFileCacheDirectory)'
+echo 'mw: Configure file cache ($wgUseFileCache, $wgFileCacheDirectory)'
 _file_cache='$wgUseFileCache = true;\n$wgFileCacheDirectory ='
 _file_cache="${_file_cache} \"/tmp/mediawiki_file_cache\";"
 sed --regexp-extended --null-data \
@@ -134,7 +154,7 @@ unset _file_cache
 
 # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
 # https://www.mediawiki.org/wiki/Manual:$wgEnableUploads
-echo '  MW: Enable Uploads ($wgEnableUploads)'
+echo 'mw: Enable Uploads ($wgEnableUploads)'
 sed -e's|^\$wgEnableUploads = false;$|$wgEnableUploads = true;|' \
     -i "${LOCAL_SETTINGS}"
 for _file in /etc/php/8.4/apache2/php.ini /etc/php/8.4/cli/php.ini
@@ -148,7 +168,7 @@ done
 # https://www.mediawiki.org/wiki/Manual:$wgRightsUrl
 # https://www.mediawiki.org/wiki/Manual:$wgRightsText
 # https://www.mediawiki.org/wiki/Manual:$wgRightsIcon
-echo '  MW: Enable rights (CC BY 4.0, $wgRightsUrl, $wgRightsText, $wgRightsIcon)'
+echo 'mw: Enable rights (CC BY 4.0, $wgRightsUrl, $wgRightsText, $wgRightsIcon)'
 _wgRightsUrl='https://creativecommons.org/licenses/by/4.0/'
 _wgRightsText='Creative Commons Attribution 4.0 International'
 _wgRightsIcon='https://licensebuttons.net/l/by/4.0/88x31.png'
@@ -161,21 +181,22 @@ unset _wgRightsUrl _wgRightsText _wgRightsIcon
 
 
 # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
-echo '  MW: Enable short URL ($wgArticlePath)'
+echo 'mw: Enable short URL ($wgArticlePath)'
 append '# Enable short URL'
 append '$wgArticlePath = "/wiki/$1";'
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgFileExtensions
-echo '  MW: Add file extensions ($wgFileExtensions)'
+echo 'mw: Add file extensions ($wgFileExtensions)'
 append
 append '# Additional file extensions'
+echo -n "${E90}mw:"
 for _ext in "${FILE_EXTENSIONS[@]}"
 do
     append "\$wgFileExtensions[] = \"${_ext}\";"
-    echo -n "  ${E90}${_ext}${E0}"
+    echo -n " ${_ext}"
 done
-echo
+echo "${E0}"
 
 
 #append
@@ -192,25 +213,25 @@ append
 append '# CDN caching'
 
 # https://www.mediawiki.org/wiki/Manual:$wgCdnMaxAge
-echo '  Configure cache timeout ($wgCdnMaxAge)'
+echo 'mw: Configure cache timeout ($wgCdnMaxAge)'
 append '$wgCdnMaxAge = 3600;  # 1 hour'
 
 # https://www.mediawiki.org/wiki/Manual:$wgUseCdn
-echo '  Enable CDN ($wgUseCdn)'
+echo 'mw: Enable CDN ($wgUseCdn)'
 append '$wgUseCdn = true;'
 
 case "${CONTAINER_ENV}" in
     dev)
         PREFIX='#-'
-        NOTE="[dev disabled]${E90}"
+        NOTE="mw: [dev disabled]${E90}"
         append '#-Production configuration disabled in development'
         ;;
     prod)
         PREFIX='';
-        NOTE='MW:';;
+        NOTE='mw:';;
 esac
 # https://www.mediawiki.org/wiki/Manual:$wgCdnServersNoPurge
-echo "  ${NOTE} Configure Cloudflare CDN IPs (\$wgCdnServersNoPurge)${E0}"
+echo "${NOTE} Configure Cloudflare CDN IPs (\$wgCdnServersNoPurge)${E0}"
 append "${PREFIX}\$wgCdnServersNoPurge = [];"
 # shellcheck disable=2013
 for _remote_ip in $(awk '/^#?-?RemoteIPTrustedProxy/ {print $2}' \
@@ -224,23 +245,23 @@ append
 append '# Extensions'
 
 # https://www.mediawiki.org/wiki/Extension:Cite
-echo '  MW: Enable Cite extension'
+echo 'mw: Enable Cite extension'
 append 'wfLoadExtension( "Cite" );'
 
 # https://www.mediawiki.org/wiki/Extension:Nuke
-echo '  MW: Enable Nuke extension'
+echo 'mw: Enable Nuke extension'
 append 'wfLoadExtension( "Nuke" );'
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgUseRCPatrol
-echo '  MW: Disable recent changes patrolling ($wgUseRCPatrol)'
+echo 'mw: Disable recent changes patrolling ($wgUseRCPatrol)'
 append
 append '$wgUseRCPatrol = false;'
 
 
 append
 # https://www.mediawiki.org/wiki/Manual:User_rights
-echo '  MW: Update group permissions / user rights'
+echo 'mw: Update group permissions / user rights'
 append '# Group permissions / user rights
 # Only allow SysOps to create accounts instead of * (all) group
 $wgGroupPermissions["sysop"]["createaccount"] = true;
@@ -261,4 +282,4 @@ foreach ($_basicPermissions as $_permission) {
 '
 
 
-bold 'End MW (MediaWiki) installation'
+bold 'End MediaWiki installation  '

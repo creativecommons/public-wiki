@@ -12,18 +12,19 @@ trap '_es=${?};
 
 # https://en.wikipedia.org/wiki/ANSI_escape_code
 E0="$(printf "\e[0m")"        # reset
+E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E97="$(printf "\e[97m")"      # foreground: bright white
 
-
 bold() {
-    printf "${E97}%s${E0}\n" "${@}"
+    printf "${E97}msmtp: %s${E0} ${E90}%s${E0}\n" "${1}" \
+        "$(date --utc '+%F %T.%N %Z')"
 }
 
 
-bold 'Begin msmtp configuration'
+bold 'Begin configuration'
 
 
-echo '  msmtp: Configure /etc/mailname'
+echo 'msmtp: Configure /etc/mailname'
 MAILNAME="${MW_SERVER_URL##*/}"
 MAILNAME="${MAILNAME%%:*}"
 MAILNAME="${MAILNAME%/}"
@@ -33,19 +34,19 @@ then
 fi
 echo "${MAILNAME}" > /etc/mailname
 
-echo '  msmtp: Configuring /etc/aliases'
+echo 'msmtp: Configure /etc/aliases'
 echo "\
 # https://manpages.debian.org/trixie/msmtp/msmtp.1.en.html#aliases
 default:    ${DMA_ROOT_ALIAS}
 root:       ${DMA_ROOT_ALIAS}
 www-data:   ${DMA_ROOT_ALIAS}" > /etc/aliases
 
-echo '  msmtp: Configuring log file'
+echo 'msmtp: Create /var/log/msmtp.log'
 touch /var/log/msmtp.log
 chown root:www-data /var/log/msmtp.log
 chmod 0664 /var/log/msmtp.log
 
-echo '  msmtp: Configuring /etc/msmtprc'
+echo 'msmtp: Configure /etc/msmtprc'
 echo "\
 # https://manpages.debian.org/trixie/msmtp/msmtp.1.en.html
 account smarthost
@@ -64,5 +65,4 @@ syslog off
 aliases /etc/aliases
 account default : smarthost" > /etc/msmtprc
 
-
-bold 'End msmtp configuration'
+bold 'End configuration  '
