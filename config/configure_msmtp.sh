@@ -41,7 +41,7 @@ default:    ${DMA_ROOT_ALIAS}
 root:       ${DMA_ROOT_ALIAS}
 www-data:   ${DMA_ROOT_ALIAS}" > /etc/aliases
 
-echo 'msmtp: Configure log file'
+echo 'msmtp: Create /var/log/msmtp.log'
 touch /var/log/msmtp.log
 chown root:www-data /var/log/msmtp.log
 chmod 0664 /var/log/msmtp.log
