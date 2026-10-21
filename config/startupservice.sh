@@ -62,7 +62,7 @@ echo "${E90}All required environment variables are present${E90}"
 
 while ! (echo > "/dev/tcp/${MW_DB_HOST}/${MW_DB_PORT}") >/dev/null 2>&1
 do
-    echo -n "${E90}Database  at ${MW_DB_HOST}:${MW_DB_PORT} is unreachable."
+    echo -n "${E90}Database at ${MW_DB_HOST}:${MW_DB_PORT} is unreachable."
     echo " Retrying in 1s...${E0}"
     sleep 1
 done
