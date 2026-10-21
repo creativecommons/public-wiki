@@ -454,26 +454,6 @@ mw_maintenance_titles() {
     echo
 }
 
-mysql_disable_redo_log() {
-    print_header 'Disable MySQL redo log'
-    docker compose exec 'db' sh -c \
-        'echo "ALTER INSTANCE DISABLE INNODB REDO_LOG;" | mysql'
-    echo -n 'InnoDB redo logging is disabled. All data could be lost in'
-    echo ' case of a server'
-    echo 'crash.'
-    echo
-}
-
-mysql_enable_redo_log() {
-    print_header 'Disable MySQL redo log'
-    docker compose exec 'db' sh -c \
-        'echo "ALTER INSTANCE ENABLE INNODB REDO_LOG;" | mysql'
-    echo -n 'InnoDB redo logging is enabled. Data is now safe and can be'
-    echo ' recovered in case of'
-    echo 'a server crash.'
-    echo
-}
-
 notice_staff_only() {
     echo "${E93}${NOTICE_TEAM}${E0}"
     echo
@@ -561,11 +541,17 @@ sql_import() {
     print_key_val 'Container' "${E97}db${E0}"
     print_var 'DOCKER_PULL_SQL'
     echo
+    echo 'Disable autocommit'
+    docker compose exec 'db' sh -c 'echo "SET autocommit=0;" | mysql'
     echo 'Import database dump SQL file from local pull cache'
     TIMEFORMAT="${E97}${E100}       import duration:${E0} %3lR"
     time docker compose exec --env DOCKER_PULL_SQL="${DOCKER_PULL_SQL}" 'db' \
         sh -c 'mysql < "${DOCKER_PULL_SQL}"'
     unset TIMEFORMAT
+    echo 'Commit the current transaction'
+    docker compose exec 'db' sh -c 'echo "COMMIT;" | mysql'
+    echo 'Enable autocommit'
+    docker compose exec 'db' sh -c 'echo "SET autocommit=1;" | mysql'
     echo
 }
 

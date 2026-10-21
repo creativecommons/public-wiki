@@ -45,6 +45,7 @@ RUN set -o errexit -o nounset \
         php-mysql \
         php-xml \
         php-zip \
+        ripgrep \
         rsync \
         unzip \
         vim \
