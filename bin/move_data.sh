@@ -454,26 +454,6 @@ mw_maintenance_titles() {
     echo
 }
 
-mysql_disable_redo_log() {
-    print_header 'Disable MySQL redo log'
-    docker compose exec 'db' sh -c \
-        'echo "ALTER INSTANCE DISABLE INNODB REDO_LOG;" | mysql'
-    echo -n 'InnoDB redo logging is disabled. All data could be lost in'
-    echo ' case of a server'
-    echo 'crash.'
-    echo
-}
-
-mysql_enable_redo_log() {
-    print_header 'Disable MySQL redo log'
-    docker compose exec 'db' sh -c \
-        'echo "ALTER INSTANCE ENABLE INNODB REDO_LOG;" | mysql'
-    echo -n 'InnoDB redo logging is enabled. Data is now safe and can be'
-    echo ' recovered in case of'
-    echo 'a server crash.'
-    echo
-}
-
 notice_staff_only() {
     echo "${E93}${NOTICE_TEAM}${E0}"
     echo
