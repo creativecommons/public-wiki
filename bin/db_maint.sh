@@ -29,8 +29,7 @@ case "${1:-maint}" in
         verify_docker_service
         mysql_get_mywiki_tables
         mysql_redo_log 'Disable'
-        mysql_maintenance 'Check'
-        mysql_maintenance 'Optimize'
+        mysql_maintenance
         mysql_redo_log 'Enable'
         ;;
     *) echo "${NOTICE_HELP}";;

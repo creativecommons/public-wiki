@@ -20,6 +20,7 @@ trap '_es=${?};
 E0="$(printf "\e[0m")"        # reset
 E30="$(printf "\e[30m")"      # foreground: black
 E31="$(printf "\e[31m")"      # foreground: red
+E36="$(printf "\e[36m")"      # foreground: cyan
 E90="$(printf "\e[90m")"      # foreground: bright black (gray)
 E92="$(printf "\e[92m")"      # foreground: bright green
 E93="$(printf "\e[93m")"      # foreground: bright yellow
@@ -104,6 +105,10 @@ print_var() {
 
 repo_rel_path() {
     sed -e"s|${DIR_REPO}|DIR_REPO|"
+}
+
+set_time_format() {
+    TIMEFORMAT="${E90}Duration: %3lR${E0}"
 }
 
 #### MAIN #####################################################################
