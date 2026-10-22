@@ -142,16 +142,6 @@ sed --regexp-extended --null-data \
 unset _session_cache
 
 
-# https://www.mediawiki.org/wiki/Manual:$wgUseFileCache
-echo 'mw: Configure file cache ($wgUseFileCache, $wgFileCacheDirectory)'
-_file_cache='$wgUseFileCache = true;\n$wgFileCacheDirectory ='
-_file_cache="${_file_cache} \"/tmp/mediawiki_file_cache\";"
-sed --regexp-extended --null-data \
-    -e"s|(\\\$wgMemCachedServers[^;]+;)|\\1\\n${_file_cache}|" \
-    -i "${LOCAL_SETTINGS}"
-unset _file_cache
-
-
 # https://www.mediawiki.org/wiki/Manual:Configuring_file_uploads
 # https://www.mediawiki.org/wiki/Manual:$wgEnableUploads
 echo 'mw: Enable Uploads ($wgEnableUploads)'
@@ -180,6 +170,7 @@ sed --regexp-extended \
 unset _wgRightsUrl _wgRightsText _wgRightsIcon
 
 
+append
 # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
 echo 'mw: Enable short URL ($wgArticlePath)'
 append '# Enable short URL'
@@ -207,6 +198,12 @@ echo "${E0}"
 ## https://www.mediawiki.org/wiki/Manual:$wgMiserMode
 #bold 'Disable database-intensive features (performance, $wgMiserMode)'
 #append '$wgMiserMode = true;'
+
+
+append
+# https://www.mediawiki.org/wiki/Manual:$wgUseFileCache
+append '# Do NOT enable $wgUseFileCache'
+append '# The server-side file cache breaks CDN caching and should NOT be used'
 
 
 append
