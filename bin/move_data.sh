@@ -129,7 +129,7 @@ files_export() {
     print_bright \
         'Rsync copy assets (remove MediaWiki files not in export cache)' \
         | tr -d '\n'
-    TIMEFORMAT="${E97}${E100}        rsync duration:${E0} %3lR"
+    set_time_format
     # The rsync options below are ordered to match `man rsync`
     time docker compose exec 'web' \
         rsync \
@@ -153,7 +153,7 @@ files_export() {
     print_bright \
         'Rsync copy images (remove MediaWiki files not in export cache)' \
         | tr -d '\n'
-    TIMEFORMAT="${E97}${E100}        rsync duration:${E0} %3lR"
+    set_time_format
     # The rsync options below are ordered to match `man rsync`
     time docker compose exec 'web' \
         rsync \
@@ -197,7 +197,7 @@ files_import() {
     print_bright \
         'Rsync copy assets (remove MediaWiki files not in pull cache)' \
         | tr -d '\n'
-    TIMEFORMAT="${E97}${E100}        rsync duration:${E0} %3lR"
+    set_time_format
     # The rsync options below are ordered to match `man rsync`
     time docker compose exec 'web' \
         rsync \
@@ -218,7 +218,7 @@ files_import() {
     print_bright \
         'Rsync copy images (remove MediaWiki files not in pull cache)' \
         | tr -d '\n'
-    TIMEFORMAT="${E97}${E100}        rsync duration:${E0} %3lR"
+    set_time_format
     # The rsync options below are ordered to match `man rsync`
     time docker compose exec 'web' \
         rsync \
@@ -263,7 +263,7 @@ files_pull() {
     #### Asssets
     print_bright 'Rsync download assets (remove local files not on remote)' \
         | tr -d '\n'
-    TIMEFORMAT="${E97}${E100}        rsync duration:${E0} %3lR"
+    set_time_format
     # The rsync options below are ordered to match `man rsync`
     time rsync \
         --recursive \
@@ -286,7 +286,7 @@ files_pull() {
     ##### Images
     print_bright 'Rsync download assets (remove local files not on remote)' \
         | tr -d '\n'
-    TIMEFORMAT="${E97}${E100}        rsync duration:${E0} %3lR"
+    set_time_format
     # The rsync options below are ordered to match `man rsync`
     time rsync \
         --recursive \
@@ -331,7 +331,7 @@ files_push() {
     echo
     #### Asssets
     print_bright 'Rsync upload assets (remove remote files not in local cache)'
-    TIMEFORMAT="${E97}${E100}        rsync duration:${E0} %3lR"
+    set_time_format
     # The rsync options below are ordered to match `man rsync`
     time rsync \
         --recursive \
@@ -350,7 +350,7 @@ files_push() {
     echo
     ##### Images
     print_bright 'Rsync upload images (remove remote files not in local cache)'
-    TIMEFORMAT="${E97}${E100}        rsync duration:${E0} %3lR"
+    set_time_format
     # The rsync options below are ordered to match `man rsync`
     time rsync \
         --recursive \
@@ -509,7 +509,7 @@ sql_export() {
     echo
     print_bright 'Dump database to local export cache sql file'
     echo '(overwrite existing file)'
-    TIMEFORMAT="${E97}${E100}    mysqldump duration:${E0} %3lR"
+    set_time_format
     # https://dev.mysql.com/doc/refman/9.7/en/mysqldump.html
     # Options set in /root/.my.cnf in db container
     docker compose exec --env DOCKER_EXPORT_SQL="${DOCKER_EXPORT_SQL}" db \
@@ -521,7 +521,7 @@ sql_export() {
         "$(du -sh "${CACHE_EXPORT_SQL}" | awk '{print $1}')"
     echo
     echo 'Create compressed copy of database dump sql file'
-    TIMEFORMAT="${E97}${E100}  compression duration:${E0} %3lR"
+    set_time_format
     time gzip --force --keep "${CACHE_EXPORT_SQL}"
     unset TIMEFORMAT
     print_key_val 'compressed file size' \
@@ -544,7 +544,7 @@ sql_import() {
     echo 'Disable autocommit'
     docker compose exec 'db' sh -c 'echo "SET autocommit=0;" | mysql'
     echo 'Import database dump SQL file from local pull cache'
-    TIMEFORMAT="${E97}${E100}       import duration:${E0} %3lR"
+    set_time_format
     time docker compose exec --env DOCKER_PULL_SQL="${DOCKER_PULL_SQL}" 'db' \
         sh -c 'mysql < "${DOCKER_PULL_SQL}"'
     unset TIMEFORMAT
@@ -571,7 +571,7 @@ sql_pull() {
     echo
     print_bright 'Dump database to local pull cache sql file'
     echo '(overwrite existing file)'
-    TIMEFORMAT="${E97}${E100}    mysqldump duration:${E0} %3lR"
+    set_time_format
     # https://dev.mysql.com/doc/refman/9.7/en/mysqldump.html
     # shellcheck disable=SC2016
     time railway ssh --service "${RAILWAY_SERVICE_MYSQL}" \
@@ -588,7 +588,7 @@ sql_pull() {
         "$(du -sh "${CACHE_PULL_SQL}" | awk '{print $1}')"
     echo
     echo 'Create compressed copy of database dump sql file'
-    TIMEFORMAT="${E97}${E100}  compression duration:${E0} %3lR"
+    set_time_format
     time gzip --force --keep "${CACHE_PULL_SQL}"
     unset TIMEFORMAT
     print_key_val 'compressed file size' \
@@ -614,7 +614,7 @@ sql_push() {
         --service "${RAILWAY_SERVICE_MYSQL}"
     echo
     echo 'Import database dump SQL file from local pull cache'
-    TIMEFORMAT="${E97}${E100}       import duration:${E0} %3lR"
+    set_time_format
     time {
         railway ssh --service "${RAILWAY_SERVICE_MYSQL}" \
             'echo "ALTER INSTANCE DISABLE INNODB REDO_LOG;" | mysql'
@@ -665,8 +665,7 @@ case "${COMMAND}" in
         mw_maintenance_titles
         mw_maintenance_rebuild
         mysql_get_mywiki_tables
-        mysql_maintenance 'Check'
-        mysql_maintenance 'Optimize'
+        mysql_maintenance
         mysql_redo_log 'Enable'
         ;;
     'export')
@@ -674,8 +673,7 @@ case "${COMMAND}" in
         verify_docker_services
         files_export
         mysql_get_mywiki_tables
-        mysql_maintenance 'Check'
-        mysql_maintenance 'Optimize'
+        mysql_maintenance
         sql_export
         ;;
     'push')
