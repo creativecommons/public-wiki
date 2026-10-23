@@ -1,4 +1,4 @@
-exclude = "^migrate/cache-"
+exclude = "^cache/"
 
 
 # meta
