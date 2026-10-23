@@ -33,7 +33,6 @@ FILE_EXTENSIONS=(
     zip
 )
 LOCAL_SETTINGS="${CONF_PATH}/LocalSettings.php"
-MW_INSTALL='/usr/bin/php /usr/share/mediawiki/maintenance/run.php install'
 VOCAB_REPO='https://raw.githubusercontent.com/creativecommons/vocabulary'
 
 
@@ -53,27 +52,28 @@ bold 'Begin MediaWiki installation'
 rm -f "${LOCAL_SETTINGS}"
 
 # https://www.mediawiki.org/wiki/Manual:Install.php
-${MW_INSTALL} \
-    --confpath="${CONF_PATH}" \
-    --dbname="${MYSQL_DATABASE}" \
-    --dbpass="${MYSQL_ROOT_PASSWORD}" \
-    --dbserver="${MW_DB_HOST}:${MW_DB_PORT}" \
-    --dbuser="${MYSQLUSER}" \
-    --installdbpass="${MYSQL_ROOT_PASSWORD}" \
-    --installdbuser="${MYSQLUSER}" \
-    --pass "${MW_ADMIN_PASS}" \
-    --scriptpath="" \
-    --server="${MW_SERVER_URL}" \
-    --skins=Vector \
-    "${MW_SITENAME}" "${MW_ADMIN_USER}" \
+# Run install with PHP Warnin and PHP Notice errors suppressed
+/usr/bin/php -d error_reporting=32757 \
+    /usr/share/mediawiki/maintenance/run.php install \
+        --confpath="${CONF_PATH}" \
+        --dbname="${MYSQL_DATABASE}" \
+        --dbpass="${MYSQL_ROOT_PASSWORD}" \
+        --dbserver="${MW_DB_HOST}:${MW_DB_PORT}" \
+        --dbuser="${MYSQLUSER}" \
+        --installdbpass="${MYSQL_ROOT_PASSWORD}" \
+        --installdbuser="${MYSQLUSER}" \
+        --pass "${MW_ADMIN_PASS}" \
+        --scriptpath="" \
+        --server="${MW_SERVER_URL}" \
+        --skins=Vector \
+        "${MW_SITENAME}" "${MW_ADMIN_USER}" \
     | sed --regexp-extended \
         -e'/^The environment has been checked. You can install MediaWiki\.$/d' \
         -e'/^Warning: Your default directory for.*not checked.*install\.$/d' \
         -e'/^Warning: Because of a connection error, it was not.*uploads\.$/d' \
         -e'/^done$/d' \
         -e'/^MediaWiki has been successfully installed\..*on that page\.$/d' \
-        -e's/^/mw: /' \
-        -e"s/^(mw: Warning:.*)\$/${E90}\1${E0}/"
+        -e's/^/mw: /'
 # Full text of deleted lines:
 # 1. The environment has been checked. You can install MediaWiki.
 # 2. Warning: Your default directory for uploads (/usr/share/mediawiki/images/) is
@@ -89,6 +89,7 @@ ${MW_INSTALL} \
 #    your wiki. If you have questions, check out our frequently asked questions
 #    list: <https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:FAQ> or
 #    use one of the support forums linked on that page.
+
 
 # https://www.mediawiki.org/wiki/Manual:$wgLogos
 echo 'mw: Install logo ($wgLogos)'
