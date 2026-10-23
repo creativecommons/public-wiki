@@ -274,7 +274,6 @@ files_pull() {
         --partial \
         --prune-empty-dirs \
         --times \
-        --exclude='.htaccess' \
         --stats \
         --human-readable \
         "${RAILWAY_SERVICE_MEDIAWIKI}:${RAILWAY_ASSETS}/" \
@@ -297,7 +296,7 @@ files_pull() {
         --partial \
         --prune-empty-dirs \
         --times \
-        --exclude='.htaccess' \
+        --exclude='temp' \
         --stats \
         --human-readable \
         "${RAILWAY_SERVICE_MEDIAWIKI}:${RAILWAY_IMAGES}/" \
@@ -366,6 +365,9 @@ files_push() {
         "${CACHE_EXPORT_IMAGES}/" \
         "${RAILWAY_SERVICE_MEDIAWIKI}:${RAILWAY_IMAGES}/"
     unset TIMEFORMAT
+    echo 'Set ownership of entire images dir to www-data:wwww-data'
+    railway ssh --service "${RAILWAY_SERVICE_MEDIAWIKI}" \
+        chown -R www-data:www-data "${RAILWAY_IMAGES}"
     echo
 }
 
@@ -613,7 +615,7 @@ sql_push() {
         --environment "${RAILWAY_ENVIRONMENT}" \
         --service "${RAILWAY_SERVICE_MYSQL}"
     echo
-    echo 'Import database dump SQL file from local pull cache'
+    echo 'Push database to remote Railway production container'
     set_time_format
     time {
         railway ssh --service "${RAILWAY_SERVICE_MYSQL}" \
