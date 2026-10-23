@@ -1,7 +1,7 @@
 # Whether this GitHub repo is engineering related
-engineering_project: false
+engineering_project: true
 # Name of the repository/project in English
-english_name: Creative Commons Public Wiki
+english_name: Creative Commons (CC) Public Wiki
 # All technologies used
 technologies: MediaWiki, Debian, Docker
 # Whether this repository should be featured on the CC Open Source site

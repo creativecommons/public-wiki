@@ -11,6 +11,3 @@ Thumbs.db
 # Local configuration
 .env
 .railway_token
-
-# Caches
-cache/

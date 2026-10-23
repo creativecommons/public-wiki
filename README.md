@@ -1,14 +1,19 @@
 # public-wiki
 
-_Development_ Creative Commons (CC) Public Wiki
+Creative Commons (CC) Public Wiki
 
 
 ## Overview
 
-The aim of the project is to establish a robust and localized development
-environment for MediaWiki using Docker. This repository should represent the
-most advanced and closest implementation of the
-[CC Public Wiki](https://wiki.creativecommons.org).
+The goals of this project are to:
+1. Maintain the [Package public-wiki][public-wiki-pkg] in support of the CC
+   Public Wiki remote production Railway environment
+2. Maintain the CC Public Wiki local Docker development environment
+3. Maintain parity between production and development environments
+
+Production website: [CC Public Wiki](https://wiki.creativecommons.org/)
+
+[public-wiki-pkg]: https://github.com/creativecommons/public-wiki/pkgs/container/public-wiki
 
 
 ## Code of Conduct
@@ -33,55 +38,16 @@ section, below.
 [org-contrib]: https://github.com/creativecommons/.github/blob/main/CONTRIBUTING.md
 
 
-## Docker containers
+## Development
+
+
+### Docker containers
 
 The [`docker-compose.yml`](docker-compose.yml) file defines the following
 containers:
 - **web** - Web server (Apache2/MediaWiki)
   - **[`localhost:8080`](http://localhost:8080/)**
 - **db** - Database server (MySQL)
-
-
-## Dev configuration
-
-
-### Apache2
-
-See [`config/web-sites-available/000-default.conf`][dev-webconfig].
-
-[dev-webconfig]: config/web-sites-available/000-default.conf
-
-
-### MediaWiki configuration
-
-| Name      | Version  | Notes
-| --------- | -------- | ------------------------------- |
-| MediaWiki | `1.43.6` | Packaged for Debian 13 (trixie) |
-
-Also see:
-- [`.env.example`](.env.example).
-- [`config/configure_mediawiki.sh`](config/configure_mediawiki.sh)
-
-
-### Migration from legacy server
-
-- [`migrate/`](migrate/)
-  - [`README.md`](migrate/README.md)
-    - Includes related Debian, Docker, and MediaWiki documentation links
-
-
-### Related development links
-
-- [creativecommons/index-dev-env][index-dev-env]: _Local development
-  environment for CreativeCommons.org (product name: index)_
-- [creativecommons/sre-salt-prime][sre-salt-prime]: _Site Reliability
-  Engineering / DevOps SaltStack configuration files_
-
-[index-dev-env]: https://github.com/creativecommons/index-dev-env
-[sre-salt-prime]: https://github.com/creativecommons/sre-salt-prime
-
-
-## Development
 
 
 ### Dependencies
@@ -98,10 +64,6 @@ Also see:
    5. Install Rsync ([rsync download][rsync-install])
    6. Install shellcheck ([Installing -
       koalaman/shellcheck][shellcheck-install])
-2. Prepare and install prek Git hooks:
-   ```shell
-   prek install --prepare-hooks
-   ```
 
 [docker-install]: https://docs.docker.com/get-started/get-docker/
 [hadolint-install]: https://github.com/hadolint/hadolint#install
@@ -113,7 +75,11 @@ Also see:
 
 ## Setup
 
-1. Create the enviornment `.env` file by copying
+1. Prepare and install prek Git hooks:
+   ```shell
+   prek install --prepare-hooks
+   ```
+2. Create the enviornment `.env` file by copying
    [`.env.example`](.env.example):
     ```shell
     cp .env.example .env
@@ -125,6 +91,32 @@ Also see:
     ```
 4. Wait for the build and initialization to complete
 
+
+## Web container configuration
+
+See the `config/configure_*` configuration scripts called from [`config/startupservice.sh`][config/startupservice.sh].
+
+
+#### MediaWiki configuration
+
+| Name      | Version  | Notes
+| --------- | -------- | ------------------------------- |
+| MediaWiki | `1.43.6` | Packaged for Debian 13 (trixie) |
+
+Also see:
+- [`.env.example`](.env.example).
+- [`config/configure_mediawiki.sh`](config/configure_mediawiki.sh)
+
+
+## Migration from legacy server
+
+The legacy migration directory has been deleted. Links below are to commit `e1ea34af3cc8151df8e73d80b2d0c2e7dff2d5e8`.
+- [`migrate/`][migrate-dir]
+  - [`README.md`][migrate-readme]
+    - Includes related Debian, Docker, and MediaWiki documentation links
+
+[migrate-dir]: https://github.com/creativecommons/public-wiki/tree/e1ea34af3cc8151df8e73d80b2d0c2e7dff2d5e8/migrate
+[migrate-readme]: https://github.com/creativecommons/public-wiki/blob/e1ea34af3cc8151df8e73d80b2d0c2e7dff2d5e8/migrate/README.md
 
 
 ## License
