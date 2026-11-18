@@ -173,9 +173,10 @@ unset _wgRightsUrl _wgRightsText _wgRightsIcon
 
 append
 # https://www.mediawiki.org/wiki/Manual:Short_URL/Apache
+# https://www.mediawiki.org/wiki/Manual:$wgArticlePath
 echo 'mw: Enable short URL ($wgArticlePath)'
 append '# Enable short URL'
-append '$wgArticlePath = "/wiki/$1";'
+append '$wgArticlePath = "/$1";'
 
 
 # https://www.mediawiki.org/wiki/Manual:$wgFileExtensions
