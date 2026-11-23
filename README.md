@@ -87,7 +87,7 @@ containers:
    ```shell
    prek install --prepare-hooks
    ```
-2. Create the enviornment `.env` file by copying
+2. Create the environment `.env` file by copying
    [`.env.example`](.env.example):
     ```shell
     cp .env.example .env
@@ -98,6 +98,16 @@ containers:
     docker-compose up
     ```
 4. Wait for the build and initialization to complete
+
+
+### Static analysis
+
+Analysis on git commit is configure in Setup, step 1, above.
+
+Prek can be invoked manually:
+```shell
+prek run --show-diff-on-failure --color=always --all-files
+```
 
 
 ## Web container configuration
