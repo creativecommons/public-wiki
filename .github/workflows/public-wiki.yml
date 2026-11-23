@@ -89,12 +89,11 @@ jobs:
         with:
           annotations: ${{ steps.docker_meta.outputs.annotations }}
           builder: ${{ steps.docker_buildx.outputs.name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           file: web.Dockerfile
           labels: ${{ steps.docker_meta.outputs.labels }}
           platforms: ${{ steps.docker_buildx.outputs.platforms }}
           provenance: false
+          pull: true
           push: true
           sbom: false
           tags: ${{ steps.docker_meta.outputs.tags }}
