@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/build_to_ghcr.yml'
+      - '.github/workflows/public-wiki.yml'
       - 'config/**'
       - 'web.Dockerfile'
       - '!config/my.cnf'
