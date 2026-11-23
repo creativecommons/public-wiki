@@ -52,25 +52,33 @@ containers:
 
 ### Dependencies
 
-1. Install dependencies
-   macOS installation example:
+1. Install Docker ([Get Docker | Docker Docs][docker-install])
+2. Install additional dependencies
+   macOS installation example (assumes [Homebrew][brew]):
    ```shell
    brew install hadolint prek railway rsync shellcheck
    ```
-   1. Docker ([Get Docker | Docker Docs][docker-install])
-   2. Install hadolint ([Install - hadolint/hadolint][hadolint-install])
-   3. Install prek ([Installation - j178/prek][prek-install])
-   4. Install Railway CLI ([Installing - CLI | Railway Docs][railway-install])
-   5. Install Rsync ([rsync download][rsync-install])
-   6. Install shellcheck ([Installing -
+   ```shell
+   gh extension install github/gh-actions-lock
+   ```
+   1. Install hadolint ([Install - hadolint/hadolint][hadolint-install])
+   2. Install prek ([Installation - j178/prek][prek-install])
+   3. Install Railway CLI ([Installing - CLI | Railway Docs][railway-install])
+   4. Install Rsync ([rsync download][rsync-install])
+   5. Install shellcheck ([Installing -
       koalaman/shellcheck][shellcheck-install])
+   6. Install gh ([Installation - github/cli/cli][gh-install])
+   7. Install gh-actions-lock ([Install - github/gh-actinos-lock][lock-install])
 
 [docker-install]: https://docs.docker.com/get-started/get-docker/
+[brew]: https://brew.sh/
 [hadolint-install]: https://github.com/hadolint/hadolint#install
 [prek-install]: https://github.com/j178/prek#installation
 [railway-install]: https://docs.railway.com/cli#installing-the-cli
 [rsync-install]: https://rsync.samba.org/download.html
 [shellcheck-install]: https://github.com/koalaman/shellcheck#installing
+[gh-install]: https://github.com/cli/cli#installation
+[lock-install]: https://github.com/github/gh-actions-lock#install
 
 
 ## Setup
