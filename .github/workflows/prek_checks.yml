@@ -1,5 +1,5 @@
 name: prek checks
-on: [push, pull_request]
+on: [push, pull_request, workflow_call, workflow_dispatch]
 
 jobs:
   prek:
@@ -36,15 +36,18 @@ jobs:
 
         # https://github.com/actions/checkout
         - name: Checkout repository
-          # v7.0.1
-          uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+          uses: actions/checkout@v7.0.1
 
         # https://github.com/j178/prek-action
         - name: Install prek
-          # v3.0.1
-          uses: j178/prek-action@1382ad72dea72f9d53832f2bcb65b3e87a947204
+          uses: j178/prek-action@v3.1.1
           with:
             install-only: true
+
+        # https://github.com/github/gh-actions-lock
+        - name: Install gh-actions-lock
+          run: gh extension install github/gh-actions-lock --pin v0.4.1
+
 
       # The no-commit-to-branch builtin hook is skipped to avoid false
       # positives (ex. when PRs are merged)
