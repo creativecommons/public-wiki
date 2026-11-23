@@ -66,14 +66,5 @@ then
         /mnt/wiki/var-lib-mediawiki-images /var/lib/mediawiki/images
 fi
 
-# TODO: remove this after initial deployment
-E93="$(printf "\e[93m")"
-echo "mount: Remove etc symlink ${E93}[TODO: remove this after initial \
-deployment]${E0}"
-mkdir --parents /mnt/wiki/etc-mediawiki
-[[ -d /mnt/wiki/etc-mediawiki ]] && rm -rf /mnt/wiki/etc-mediawiki
-[[ -h /etc/mediawiki ]] && rm -f /etc/mediawiki
-mkdir -p /etc/mediawiki
-
 
 bold 'End persistent volume configuration  '
