@@ -89,4 +89,23 @@ hooks = [
 ]
 
 
+# gh-actions-lock
+# https://github.com/github/gh-actions-lock
+[[repos]]
+repo = "local"
+hooks = [
+  # Hook option order based on:
+  # https://prek.j178.dev/reference/configuration/#common-hook-options
+  {
+    id = "gh-actions-lock",
+    name = "gh-actions-lock",
+    entry = "gh actions-lock --verify-local",
+    language = "system",
+    files = { glob = ".github/workflows/*" },
+    types = [ "yaml" ],
+    description = """Ensure every uses: has a lockfile entry (coverage only, \
+      not provenance)""",
+  },
+]
+
 # vim: tabstop=2 shiftwidth=2
